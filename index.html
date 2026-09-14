@@ -1,0 +1,106 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Lora:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+<title>DON DUONG VILLAGE</title><link rel="stylesheet" href="assets/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/demo-data.js"></script><script src="assets/js/supabase.js"></script><script src="assets/js/common.js"></script><script defer src="assets/js/home.js"></script></head><body>
+<div class="topbar"><div class="container"><span>Tinh hoa từ vùng đất Lâm Đồng</span><span>Hỗ trợ <span class="js-support"></span> · <a class="js-phone" href="#"></a></span></div></div>
+<header class="site-header"><div class="container nav"><a href="index.html"><img class="brand-logo" src="assets/images/logo-horizontal.png" alt="DON DUONG VILLAGE"></a>
+<nav id="navLinks" class="nav-links"><a class="active" href="index.html">Trang chủ</a><a href="products.html">Sản phẩm</a><a href="about.html">Về chúng tôi</a><a href="blog.html">Kiến thức sức khỏe</a><a href="#footer">Liên hệ</a></nav>
+<div class="nav-actions"><button class="circle-btn mobile-menu-btn" onclick="toggleMenu()">☰</button><a class="circle-btn desktop-only" href="products.html">⌕</a><a class="circle-btn" href="cart.html">🛒<span id="cartCount" class="cart-count">0</span></a></div></div></header>
+
+<main>
+<section id="hero" class="hero">
+  <div class="container hero-layout">
+    <div class="hero-content">
+      <div class="eyebrow">TỪ VÙNG ĐẤT LÂM ĐỒNG</div>
+      <h1 id="heroTitle"></h1>
+      <p id="heroSub"></p>
+      <a id="heroBtn" class="btn primary" href="products.html"></a>
+    </div>
+    <div class="hero-handwritten" id="heroQuote">Sức khỏe<br>bắt đầu từ<br>những lựa chọn nhỏ<br>mỗi ngày</div>
+  </div>
+</section>
+
+<div class="trust-strip">
+  <div class="container trust-grid">
+    <div class="trust-item"><div class="icon-round">🍃</div><div><strong>Sản phẩm lành sạch</strong><small>Từ thiên nhiên Lâm Đồng</small></div></div>
+    <div class="trust-item"><div class="icon-round">🛡</div><div><strong>Nguồn gốc rõ ràng</strong><small>An tâm lựa chọn</small></div></div>
+    <div class="trust-item"><div class="icon-round">🚚</div><div><strong>Giao hàng toàn quốc</strong><small>Nhanh chóng, tiện lợi</small></div></div>
+    <div class="trust-item"><div class="icon-round">🎧</div><div><strong>Hỗ trợ tận tâm</strong><small>Luôn đồng hành cùng bạn</small></div></div>
+  </div>
+</div>
+
+<section class="section white">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">SẢN PHẨM NỔI BẬT</div>
+        <h2>Tinh hoa thiên nhiên, đồng hành cùng sức khỏe</h2>
+      </div>
+      <a class="section-link" href="products.html">Xem tất cả →</a>
+    </div>
+
+    <div class="home-products-layout">
+      <div id="featuredProducts" class="grid-products grid-products-home"></div>
+
+      <aside class="side-promo-card">
+        <div id="sideBannerBg" class="side-promo-bg"></div>
+        <div class="side-promo-overlay"></div>
+        <div class="side-promo-content">
+          <h3 id="sideBannerTitle">Quà sức khỏe từ cao nguyên Lâm Đồng</h3>
+          <p id="sideBannerSub">Một khoảng dành cho chiến dịch nổi bật hoặc quà tặng theo mùa.</p>
+          <a id="sideBannerBtn" class="btn secondary small" href="products.html">Xem sản phẩm →</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container story-wrap">
+    <div id="storyMedia" class="story-media">
+      <div class="story-overlay-text">Giữ vị thật<br>từ thiên nhiên</div>
+    </div>
+    <div class="story-copy">
+      <div class="eyebrow">CÂU CHUYỆN THƯƠNG HIỆU</div>
+      <h2 id="storyTitle"></h2>
+      <p id="storySub"></p>
+      <p id="storyBody"></p>
+      <a id="storyBtn" class="btn primary" href="about.html"></a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="home-values-title">
+      <div class="eyebrow">GIÁ TRỊ DON DUONG VILLAGE MANG LẠI</div>
+    </div>
+    <div class="values-grid">
+      <div class="value-card" style="background:white;border-color:var(--line);color:var(--ink)"><div class="icon-round" style="margin-bottom:12px">🍃</div><b style="color:var(--forest)">Tự nhiên</b><span style="color:var(--muted)">Tinh hoa từ Lâm Đồng</span></div>
+      <div class="value-card" style="background:white;border-color:var(--line);color:var(--ink)"><div class="icon-round" style="margin-bottom:12px">💚</div><b style="color:var(--forest)">An tâm</b><span style="color:var(--muted)">Nguồn gốc rõ ràng</span></div>
+      <div class="value-card" style="background:white;border-color:var(--line);color:var(--ink)"><div class="icon-round" style="margin-bottom:12px">👥</div><b style="color:var(--forest)">Đồng hành</b><span style="color:var(--muted)">Vì sức khỏe gia đình bạn</span></div>
+      <div class="value-card" style="background:white;border-color:var(--line);color:var(--ink)"><div class="icon-round" style="margin-bottom:12px">☀</div><b style="color:var(--forest)">Tận hưởng</b><span style="color:var(--muted)">Cuộc sống trọn vẹn hơn</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="container">
+    <div id="bottomBanner" class="bottom-banner">
+      <div class="leaf-deco"><span></span></div>
+      <div class="bottom-content">
+        <h2 id="bottomTitle"></h2>
+        <a id="bottomBtn" class="btn gold" href="products.html"></a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer id="footer" class="site-footer"><div class="container"><div class="footer-grid">
+<div><img class="footer-logo" src="assets/images/logo-horizontal.png"><p>YOUR HEALTH, YOUR GREATEST WEALTH</p><div class="social-row"><a data-social="facebook" class="social-link">Facebook</a><a data-social="tiktok" class="social-link">TikTok</a><a data-social="shopee" class="social-link">Shopee</a><a data-social="zalo" class="social-link">Zalo</a></div></div>
+<div><h4>Khám phá</h4><p><a href="products.html">Sản phẩm</a></p><p><a href="blog.html">Kiến thức sức khỏe</a></p><p><a href="about.html">Về chúng tôi</a></p></div>
+<div><h4>Liên hệ</h4><p><a class="js-phone"></a></p><p><a class="js-email"></a></p></div>
+<div><h4>Chính sách</h4><p>Giao hàng</p><p>Đổi trả</p><p>Bảo mật thông tin</p></div>
+</div><div class="copyright">© 2026 DON DUONG VILLAGE. All rights reserved.</div></div></footer>
+</body></html>

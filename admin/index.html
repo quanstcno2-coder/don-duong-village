@@ -1,0 +1,96 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Lora:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+<title>Admin | DON DUONG VILLAGE</title><link rel="stylesheet" href="../assets/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../assets/js/config.js"></script><script src="../assets/js/demo-data.js"></script><script src="../assets/js/supabase.js"></script><script src="../assets/js/common.js"></script><script defer src="../assets/js/admin.js"></script></head><body class="admin-body">
+<section id="loginView"><div class="login-card"><img class="brand-logo" src="../assets/images/logo-horizontal.png"><h1>Đăng nhập Admin</h1><p>Quản lý sản phẩm, đơn hàng, bài viết, banner và thông tin doanh nghiệp.</p><form id="loginForm"><div class="form-group"><label>Email</label><input class="field" type="email" name="email" required></div><div class="form-group" style="margin-top:12px"><label>Mật khẩu</label><input class="field" type="password" name="password" required></div><button class="btn primary" style="width:100%;margin-top:18px">Đăng nhập</button></form></div></section>
+<section id="adminView" class="admin-shell hidden"><aside class="admin-sidebar"><img class="brand-logo" src="../assets/images/logo-horizontal.png"><div class="admin-menu"><button data-tab="dashboard" onclick="showTab('dashboard')">▣ Tổng quan</button><button data-tab="products" onclick="showTab('products')">▧ Sản phẩm</button><button data-tab="orders" onclick="showTab('orders')">☷ Đơn hàng</button><button data-tab="posts" onclick="showTab('posts')">✎ Bài viết</button><button data-tab="pages" onclick="showTab('pages')">▤ Trang website</button><button data-tab="about" onclick="showTab('about')">◈ Về chúng tôi</button><button data-tab="settings" onclick="showTab('settings')">⚙ Cài đặt</button></div></aside>
+<main class="admin-main"><div id="demoNotice" class="notice warn hidden">Đang ở chế độ DEMO. Giao diện hoạt động nhưng chưa ghi dữ liệu lên Supabase. Sau khi kết nối Project URL + anon public key, Admin sẽ dùng dữ liệu thật.</div>
+<div class="admin-top"><div><div class="eyebrow">DON DUONG VILLAGE ADMIN</div><h1 id="adminTitle" class="admin-title">Tổng quan</h1></div><button class="btn secondary small" onclick="logout()">Đăng xuất</button></div>
+<section id="tab-dashboard" class="admin-section"><div id="stats" class="admin-grid"></div><div class="panel"><h3>Nguyên tắc</h3><p>Layout được khóa để giữ đúng brand. Bạn thay ảnh, chữ, sản phẩm, bài viết, số điện thoại, email và link mạng xã hội mà không cần sửa code.</p></div></section>
+<section id="tab-products" class="admin-section hidden"><div class="panel"><div class="panel-head"><h3>Danh sách sản phẩm</h3><button class="btn primary small" onclick="openProduct()">+ Thêm sản phẩm</button></div><div class="table-wrap"><table><thead><tr><th>Ảnh</th><th>Tên</th><th>Giá</th><th>Tồn</th><th>Nổi bật</th><th>Thao tác</th></tr></thead><tbody id="productsTable"></tbody></table></div></div></section>
+<section id="tab-orders" class="admin-section hidden"><div class="panel"><div class="panel-head"><h3>Đơn hàng</h3></div><div class="table-wrap"><table><thead><tr><th>Mã</th><th>Khách</th><th>SĐT</th><th>Tổng</th><th>Trạng thái</th><th>Ngày</th><th>Thao tác</th></tr></thead><tbody id="ordersTable"></tbody></table></div></div></section>
+<section id="tab-posts" class="admin-section hidden"><div class="panel"><div class="panel-head"><h3>Bài viết sức khỏe</h3><button class="btn primary small" onclick="openPost()">+ Viết bài mới</button></div><div class="table-wrap"><table><thead><tr><th>Ảnh</th><th>Tiêu đề</th><th>Trạng thái</th><th>Ngày</th><th>Thao tác</th></tr></thead><tbody id="postsTable"></tbody></table></div></div></section>
+<section id="tab-pages" class="admin-section hidden"><div class="notice">Trang chủ: thay Hero, banner, Câu chuyện thương hiệu và banner cuối trang. Phần Về chúng tôi được quản lý ở tab riêng.</div><div id="sectionsWrap"></div></section>
+
+<section id="tab-about" class="admin-section hidden">
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h3>Toàn bộ nội dung trang Về chúng tôi</h3>
+        <span class="muted">Sửa toàn bộ text và ảnh mà không cần sửa code.</span>
+      </div>
+    </div>
+    <div id="aboutFixedSections" class="about-fixed-admin"></div>
+  </div>
+
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head">
+      <div>
+        <h3>Các khối nội dung</h3>
+        <span class="muted">Câu chuyện doanh nghiệp, Sứ mệnh, Tầm nhìn, Giá trị và nội dung bổ sung.</span>
+      </div>
+      <button class="btn primary" onclick="openAboutBlock()">+ Thêm nội dung</button>
+    </div>
+    <div id="aboutBlocksAdmin" class="about-admin-list"></div>
+  </div>
+</section>
+
+<section id="tab-settings" class="admin-section hidden"><div class="panel"><div class="panel-head"><h3>Thông tin doanh nghiệp</h3></div><form id="settingsForm" class="admin-form" onsubmit="saveSettings(event)"><div class="form-group"><label>Tên thương hiệu</label><input class="field" name="brand_name"></div><div class="form-group"><label>Giờ hỗ trợ</label><input class="field" name="support_hours"></div><div class="form-group"><label>Số điện thoại</label><input class="field" name="phone"></div><div class="form-group"><label>Email / Gmail</label><input class="field" name="email" type="email"></div><div class="form-group full"><label>Địa chỉ</label><input class="field" name="address"></div><div class="form-group"><label>Facebook URL</label><input class="field" name="facebook_url"></div><div class="form-group"><label>TikTok URL</label><input class="field" name="tiktok_url"></div><div class="form-group"><label>Shopee URL</label><input class="field" name="shopee_url"></div><div class="form-group"><label>Zalo URL</label><input class="field" name="zalo_url"></div><div class="full"><button class="btn primary">Lưu cài đặt</button></div></form></div></section>
+</main></section>
+<div id="productModal" class="modal hidden"><div class="modal-card"><div class="modal-head"><h3>Sản phẩm</h3><button class="close-x" onclick="closeModal('productModal')">×</button></div><form id="productForm" class="admin-form" onsubmit="saveProduct(event)"><input type="hidden" name="id"><div class="form-group full"><label>Tên sản phẩm</label><input class="field" name="name" required></div><div class="form-group"><label>Giá</label><input class="field" name="price" type="number" min="0"></div><div class="form-group"><label>Tồn kho</label><input class="field" name="stock" type="number" min="0"></div><div class="form-group full"><label>Mô tả</label><textarea class="field" name="description"></textarea></div><div class="form-group full"><label>Ảnh sản phẩm thật</label><input class="field" name="image" type="file" accept="image/*"></div><div class="form-group full"><div id="productPreview" class="preview-box"></div></div><div class="form-group full"><label><input type="checkbox" name="is_featured"> Hiển thị ở sản phẩm nổi bật</label></div><div class="full"><button class="btn primary">Lưu sản phẩm</button></div></form></div></div>
+<div id="postModal" class="modal hidden"><div class="modal-card"><div class="modal-head"><h3>Bài viết</h3><button class="close-x" onclick="closeModal('postModal')">×</button></div><form id="postForm" class="admin-form" onsubmit="savePost(event)"><input type="hidden" name="id"><div class="form-group full"><label>Tiêu đề</label><input class="field" name="title" required></div><div class="form-group"><label>Slug</label><input class="field" name="slug" placeholder="tự tạo nếu để trống"></div><div class="form-group"><label>Trạng thái</label><select class="field" name="status"><option value="draft">Nháp</option><option value="published">Đăng</option></select></div><div class="form-group full"><label>Mô tả ngắn</label><textarea class="field" name="excerpt"></textarea></div><div class="form-group full"><label>Ảnh bìa</label><input class="field" name="cover" type="file" accept="image/*"></div><div class="form-group full"><div id="postPreview" class="preview-box"></div></div><div class="form-group full"><label>Nội dung</label><div class="editor-toolbar"><button type="button" onclick="editorCmd('bold')"><b>B</b></button><button type="button" onclick="editorCmd('italic')"><i>I</i></button><button type="button" onclick="editorCmd('formatBlock','h2')">H2</button><button type="button" onclick="editorCmd('insertUnorderedList')">• List</button><button type="button" onclick="insertEditorImage()">+ Ảnh</button></div><div id="postEditor" class="rich-editor" contenteditable="true"></div></div><div class="full"><button class="btn primary">Lưu bài viết</button></div></form></div></div>
+
+<div id="aboutModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="aboutModalTitle">Thêm nội dung Về chúng tôi</h3>
+      <button class="circle-btn" type="button" onclick="closeModal('aboutModal')">×</button>
+    </div>
+    <form id="aboutForm" class="admin-form" onsubmit="saveAboutBlock(event)">
+      <input type="hidden" name="id">
+      <div class="form-group">
+        <label>Loại nội dung</label>
+        <select class="field" name="block_type" required>
+          <option value="story">Câu chuyện doanh nghiệp</option>
+          <option value="mission">Sứ mệnh</option>
+          <option value="vision">Tầm nhìn</option>
+          <option value="value">Giá trị / nền tảng</option>
+          <option value="content">Khối nội dung thường</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Thứ tự hiển thị</label>
+        <input class="field" type="number" name="sort_order" min="0" value="10">
+      </div>
+      <div class="form-group full">
+        <label>Tiêu đề</label>
+        <input class="field" name="title" required>
+      </div>
+      <div class="form-group full">
+        <label>Nội dung</label>
+        <textarea class="field" name="body" rows="8"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Ảnh (nếu cần)</label>
+        <input class="field" type="file" name="image" accept="image/*">
+        <input type="hidden" name="old_image">
+      </div>
+      <div class="form-group full about-preset-wrap">
+        <div class="about-preset-title">Ảnh có sẵn theo Brand Guidelines — có thể chọn hoặc upload ảnh khác</div>
+        <div id="aboutPresetImages" class="about-preset-images"></div>
+      </div>
+
+      <div class="form-group full">
+        <div id="aboutPreview" class="preview-box">Chưa có ảnh</div>
+      </div>
+      <div class="form-group">
+        <label class="checkbox-row"><input type="checkbox" name="is_active" checked> Hiển thị trên website</label>
+      </div>
+      <div class="full modal-actions">
+        <button type="button" class="btn secondary" onclick="closeModal('aboutModal')">Hủy</button>
+        <button class="btn primary">Lưu nội dung</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+</body></html>
