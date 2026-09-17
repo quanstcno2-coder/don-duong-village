@@ -70,15 +70,225 @@ async function uploadFile(file,bucket,path){
  if(error) throw error;
  return ddvSupabase.storage.from(bucket).getPublicUrl(name).data.publicUrl;
 }
+async function optimizeProductImage(file){
+  const bitmap = await createImageBitmap(file);
+
+  const maxSide = 1600;
+  let width = bitmap.width;
+  let height = bitmap.height;
+
+  const scale = Math.min(
+    1,
+    maxSide / Math.max(width, height)
+  );
+
+  width = Math.round(width * scale);
+  height = Math.round(height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0, width, height);
+
+  const toWebP = (quality) =>
+    new Promise((resolve, reject) => {
+      canvas.toBlob(
+        blob => blob
+          ? resolve(blob)
+          : reject(new Error("Không thể nén ảnh")),
+        "image/webp",
+        quality
+      );
+    });
+
+  let blob;
+
+  for(const quality of [0.90, 0.86, 0.82, 0.78]){
+    blob = await toWebP(quality);
+
+    if(blob.size <= 500 * 1024){
+      break;
+    }
+  }
+
+  if(bitmap.close){
+    bitmap.close();
+  }
+
+  const name =
+    file.name.replace(/\.[^.]+$/, "") + ".webp";
+
+  return new File(
+    [blob],
+    name,
+    {type:"image/webp"}
+  );
+}
+
+async function uploadProductImageToR2(file){
+  if(!ddvSupabase){
+    throw new Error("Chưa kết nối Supabase");
+  }
+
+  const {data:{session}} =
+    await ddvSupabase.auth.getSession();
+
+  if(!session?.access_token){
+    throw new Error("Phiên đăng nhập Admin đã hết hạn");
+  }
+
+  const optimized =
+    await optimizeProductImage(file);
+
+  const formData = new FormData();
+  formData.append("file", optimized);
+
+  const workerUrl =
+    window.DDV_CONFIG.R2_WORKER_URL;
+
+  if(!workerUrl){
+    throw new Error("Chưa cấu hình R2 Worker");
+  }
+
+  const response = await fetch(
+    `${workerUrl}/upload?folder=products`,
+    {
+      method:"POST",
+      headers:{
+        Authorization:
+          `Bearer ${session.access_token}`
+      },
+      body:formData
+    }
+  );
+
+  const result =
+    await response.json().catch(() => ({}));
+
+  if(!response.ok){
+    throw new Error(
+      result.error || "Upload ảnh lên R2 thất bại"
+    );
+  }
+
+  return result;
+}
 async function saveProduct(e){
- e.preventDefault(); if(!ddvSupabase){toast("Cần kết nối Supabase");return}
- const f=e.target, id=f.id.value, file=f.image.files[0];
- let image_url=adminState.editProduct?.image_url||"";
- try{if(file) image_url=await uploadFile(file,"product-images","products")}catch(err){console.error(err);toast("Upload ảnh lỗi");return}
- const payload={name:f.name.value.trim(),price:Number(f.price.value||0),stock:Number(f.stock.value||0),description:f.description.value.trim(),image_url,is_featured:f.is_featured.checked};
- const res=id?await ddvSupabase.from("product").update(payload).eq("id",id):await ddvSupabase.from("product").insert(payload);
- if(res.error){console.error(res.error);toast("Chưa lưu được sản phẩm");return}
- closeModal("productModal");toast("Đã lưu sản phẩm");loadProductsAdmin();
+  e.preventDefault();
+
+  if(!ddvSupabase){
+    toast("Cần kết nối Supabase");
+    return;
+  }
+
+  const f = e.target;
+  const id = f.id.value;
+
+  const files = Array.from(f.image.files || []);
+
+  if(files.length > 8){
+    toast("Mỗi sản phẩm chỉ được tối đa 8 ảnh");
+    return;
+  }
+
+  try{
+    let productId = id;
+
+    const payload = {
+      name: f.name.value.trim(),
+      price: Number(f.price.value || 0),
+      stock: Number(f.stock.value || 0),
+      description: f.description.value.trim(),
+      is_featured: f.is_featured.checked
+    };
+
+    // Lưu thông tin sản phẩm trước
+    if(productId){
+      const {error} = await ddvSupabase
+        .from("product")
+        .update(payload)
+        .eq("id", productId);
+
+      if(error) throw error;
+    }else{
+      const {data,error} = await ddvSupabase
+        .from("product")
+        .insert(payload)
+        .select()
+        .single();
+
+      if(error) throw error;
+
+      productId = data.id;
+    }
+
+    // Lấy số ảnh hiện có
+    const {data:existingImages,error:existingError} =
+      await ddvSupabase
+        .from("product_images")
+        .select("*")
+        .eq("product_id", productId)
+        .order("sort_order");
+
+    if(existingError) throw existingError;
+
+    const currentCount = existingImages?.length || 0;
+
+    if(currentCount + files.length > 8){
+      toast(`Sản phẩm đã có ${currentCount} ảnh. Chỉ có thể thêm tối đa ${8-currentCount} ảnh nữa.`);
+      return;
+    }
+
+    // Upload từng ảnh sang R2
+    for(let i=0;i<files.length;i++){
+      const uploaded =
+        await uploadProductImageToR2(files[i]);
+
+      const sortOrder = currentCount + i;
+
+      const {error:imageError} =
+        await ddvSupabase
+          .from("product_images")
+          .insert({
+            product_id: productId,
+            image_url: uploaded.url,
+            image_key: uploaded.key,
+            sort_order: sortOrder,
+            is_primary: sortOrder === 0
+          });
+
+      if(imageError) throw imageError;
+    }
+
+    // Đồng bộ ảnh chính vào product.image_url
+    const {data:firstImage} =
+      await ddvSupabase
+        .from("product_images")
+        .select("image_url")
+        .eq("product_id", productId)
+        .order("sort_order")
+        .limit(1)
+        .maybeSingle();
+
+    if(firstImage?.image_url){
+      await ddvSupabase
+        .from("product")
+        .update({
+          image_url:firstImage.image_url
+        })
+        .eq("id",productId);
+    }
+
+    closeModal("productModal");
+    toast("Đã lưu sản phẩm");
+    loadProductsAdmin();
+
+  }catch(err){
+    console.error(err);
+    toast(err.message || "Chưa lưu được sản phẩm");
+  }
 }
 async function deleteProduct(id){if(!confirm("Xóa sản phẩm này?")||!ddvSupabase)return;const {error}=await ddvSupabase.from("product").delete().eq("id",id);if(error)toast("Không xóa được");else{toast("Đã xóa");loadProductsAdmin()}}
 async function loadOrders(){
