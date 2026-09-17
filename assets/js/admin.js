@@ -59,7 +59,7 @@ async function loadProductsAdmin(){
 function openProduct(p=null){
  adminState.editProduct=p; $("#productModal").classList.remove("hidden");
  const f=$("#productForm"); f.reset();
- if(p){f.id.value=p.id;f.name.value=p.name||"";f.price.value=p.price||0;f.stock.value=p.stock||0;f.description.value=p.description||"";f.is_featured.checked=!!p.is_featured; $("#productPreview").innerHTML=p.image_url?`<img src="${p.image_url}">`:"Chưa có ảnh";}
+ if(p){f.id.value=p.id;f.name.value=p.name||"";f.price.value=p.price||0;f.stock.value=p.stock||0;f.description.value=p.description||"";f.product_details.value=p.product_details||"";f.is_featured.checked=!!p.is_featured; $("#productPreview").innerHTML=p.image_url?`<img src="${p.image_url}">`:"Chưa có ảnh";}
  else {f.id.value="";$("#productPreview").innerHTML="Chọn ảnh sản phẩm thật";}
 }
 function closeModal(id){$("#"+id).classList.add("hidden")}
@@ -201,6 +201,7 @@ async function saveProduct(e){
       price: Number(f.price.value || 0),
       stock: Number(f.stock.value || 0),
       description: f.description.value.trim(),
+      product_details: f.product_details.value.trim(),
       is_featured: f.is_featured.checked
     };
 
