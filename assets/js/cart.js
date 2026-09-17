@@ -47,4 +47,3 @@ async function submitOrder(e){
   }catch{toast('Kết nối bị gián đoạn. Hãy kiểm tra đơn với cửa hàng trước khi gửi lại.');}
   finally{if(button)button.disabled=false;}
 }
-

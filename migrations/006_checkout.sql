@@ -4,7 +4,8 @@ create or replace function public.ddv_checkout(p_customer jsonb,p_items jsonb) r
 language plpgsql security definer set search_path=public as $$
 declare item jsonb; p public.product%rowtype; qty integer; unit numeric; total_price numeric:=0; order_id bigint; seen bigint[]:='{}';
 begin
- if jsonb_typeof(p_items)<>'array' or jsonb_array_length(p_items) not between 1 and 100 then raise exception 'Giỏ hàng không hợp lệ'; end if;
+ if p_items is null or jsonb_typeof(p_items)<>'array' then raise exception 'Giỏ hàng không hợp lệ'; end if;
+ if jsonb_array_length(p_items) not between 1 and 100 then raise exception 'Giỏ hàng không hợp lệ'; end if;
  if length(trim(coalesce(p_customer->>'customer_name',''))) not between 1 and 200 or length(trim(coalesce(p_customer->>'phone',''))) not between 5 and 30 or length(trim(coalesce(p_customer->>'address',''))) not between 1 and 1000 then raise exception 'Thông tin nhận hàng chưa hợp lệ'; end if;
  -- All operations roll back on any invalid line. Lock catalog rows for consistency.
  for item in select value from jsonb_array_elements(p_items) order by (value->>'id')::bigint loop
