@@ -149,7 +149,106 @@ document.addEventListener("change", (e) => {
 
   renderProductImagesAdmin(existing);
 });
+let productImageDragSource = null;
 
+function refreshProductImageOrderUI(){
+  const preview = $("#productPreview");
+  if(!preview) return;
+
+  const cards = [...preview.querySelectorAll(".product-image-card")];
+
+  cards.forEach((card, index) => {
+    card.dataset.galleryIndex = index;
+
+    card.classList.toggle("is-primary", index === 0);
+
+    const oldBadge = card.querySelector(".product-image-badge");
+    if(oldBadge) oldBadge.remove();
+
+    if(index === 0){
+      const badge = document.createElement("span");
+      badge.className = "product-image-badge";
+      badge.textContent = "Ảnh chính";
+      card.appendChild(badge);
+    }else if(card.dataset.newIndex !== undefined){
+      const badge = document.createElement("span");
+      badge.className = "product-image-badge";
+      badge.textContent = "Ảnh mới";
+      card.appendChild(badge);
+    }
+  });
+}
+
+document.addEventListener("dragstart", (e) => {
+  const card = e.target.closest(".product-image-card");
+  if(!card) return;
+
+  productImageDragSource = card;
+  card.classList.add("dragging");
+
+  if(e.dataTransfer){
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData(
+      "text/plain",
+      card.dataset.galleryIndex || ""
+    );
+  }
+});
+
+document.addEventListener("dragover", (e) => {
+  const card = e.target.closest(".product-image-card");
+
+  if(!card || !productImageDragSource) return;
+
+  e.preventDefault();
+
+  if(e.dataTransfer){
+    e.dataTransfer.dropEffect = "move";
+  }
+});
+
+document.addEventListener("drop", (e) => {
+  const target = e.target.closest(".product-image-card");
+
+  if(
+    !target ||
+    !productImageDragSource ||
+    target === productImageDragSource
+  ) return;
+
+  e.preventDefault();
+
+  const preview = $("#productPreview");
+
+  const cards = [
+    ...preview.querySelectorAll(".product-image-card")
+  ];
+
+  const fromIndex = cards.indexOf(productImageDragSource);
+  const toIndex = cards.indexOf(target);
+
+  if(fromIndex < toIndex){
+    preview.insertBefore(
+      productImageDragSource,
+      target.nextSibling
+    );
+  }else{
+    preview.insertBefore(
+      productImageDragSource,
+      target
+    );
+  }
+
+  refreshProductImageOrderUI();
+});
+
+document.addEventListener("dragend", () => {
+  if(productImageDragSource){
+    productImageDragSource.classList.remove("dragging");
+  }
+
+  productImageDragSource = null;
+});
 async function openProduct(p=null){
   adminState.editProduct = p;
 
