@@ -95,8 +95,10 @@ function renderProductImagesAdmin(images=[]){
   images.forEach((img, index) => {
     html += `
       <div
+      draggable="true"
         class="product-image-card ${index === 0 ? "is-primary" : ""}"
         data-image-id="${img.id}"
+        data-gallery-index="${index}"
       >
         <img src="${img.image_url}" alt="Ảnh sản phẩm ${index + 1}">
         ${index === 0 ? '<span class="product-image-badge">Ảnh chính</span>' : ''}
@@ -109,7 +111,9 @@ function renderProductImagesAdmin(images=[]){
 
     html += `
       <div
+      draggable="true"
         class="product-image-card ${globalIndex === 0 ? "is-primary" : ""}"
+        data-gallery-index="${globalIndex}"
         data-new-index="${index}"
       >
         <img src="${item.previewUrl}" alt="Ảnh mới ${index + 1}">
