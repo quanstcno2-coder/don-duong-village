@@ -77,6 +77,7 @@ thumbButtons.forEach(btn => {
     btn.classList.add("active");
   };
 });
+  setupProductGallery(imageUrls,p.name);
   const detailsEl = $("#productDetails");
 const infoSection = $("#productInfoSection");
 
@@ -101,3 +102,4 @@ if(detailsEl && infoSection){
   document.body.appendChild(mobileBar);
   document.body.classList.add("has-mobile-product-bar");
 });
+
