@@ -402,9 +402,10 @@ async function saveProduct(e){
   const f = e.target;
   const id = f.id.value;
 
-  const files = Array.from(f.image.files || []);
+  const pendingFiles = adminState.pendingProductFiles || [];
+  const currentImages = adminState.productImages || [];
 
-  if(files.length > 8){
+  if(currentImages.length + pendingFiles.length > 8){
     toast("Mỗi sản phẩm chỉ được tối đa 8 ảnh");
     return;
   }
@@ -421,7 +422,7 @@ async function saveProduct(e){
       is_featured: f.is_featured.checked
     };
 
-    // Lưu thông tin sản phẩm trước
+    // 1. Lưu thông tin sản phẩm
     if(productId){
       const {error} = await ddvSupabase
         .from("product")
@@ -429,8 +430,9 @@ async function saveProduct(e){
         .eq("id", productId);
 
       if(error) throw error;
+
     }else{
-      const {data,error} = await ddvSupabase
+      const {data, error} = await ddvSupabase
         .from("product")
         .insert(payload)
         .select()
@@ -441,62 +443,144 @@ async function saveProduct(e){
       productId = data.id;
     }
 
-    // Lấy số ảnh hiện có
-    const {data:existingImages,error:existingError} =
+    // 2. Lấy các ảnh cũ đang có trong database
+    const {data: existingImages, error: existingError} =
       await ddvSupabase
         .from("product_images")
-        .select("*")
+        .select("id,image_url,image_key,sort_order,is_primary")
         .eq("product_id", productId)
-        .order("sort_order");
+        .order("sort_order", {ascending:true});
 
     if(existingError) throw existingError;
 
-    const currentCount = existingImages?.length || 0;
+    const oldImages = existingImages || [];
 
-    if(currentCount + files.length > 8){
-      toast(`Sản phẩm đã có ${currentCount} ảnh. Chỉ có thể thêm tối đa ${8-currentCount} ảnh nữa.`);
+    if(oldImages.length + pendingFiles.length > 8){
+      toast("Sản phẩm chỉ được tối đa 8 ảnh");
       return;
     }
 
-    // Upload từng ảnh sang R2
-    for(let i=0;i<files.length;i++){
+    // 3. Ghi nhận thứ tự hiện tại trên màn hình
+    const preview = $("#productPreview");
+
+    const cards = preview
+      ? [...preview.querySelectorAll(".product-image-card")]
+      : [];
+
+    // 4. Đưa ảnh cũ sang số thứ tự tạm
+    // để tránh trùng UNIQUE sort_order khi đổi vị trí
+    for(let i = 0; i < oldImages.length; i++){
+      const {error} = await ddvSupabase
+        .from("product_images")
+        .update({
+          sort_order: 100000 + i,
+          is_primary: false
+        })
+        .eq("id", oldImages[i].id);
+
+      if(error) throw error;
+    }
+
+    // 5. Upload các ảnh mới lên R2
+    const newImagesByIndex = new Map();
+
+    for(let i = 0; i < pendingFiles.length; i++){
       const uploaded =
-        await uploadProductImageToR2(files[i]);
+        await uploadProductImageToR2(pendingFiles[i].file);
 
-      const sortOrder = currentCount + i;
-
-      const {error:imageError} =
+      const {data: newImage, error: imageError} =
         await ddvSupabase
           .from("product_images")
           .insert({
             product_id: productId,
             image_url: uploaded.url,
             image_key: uploaded.key,
-            sort_order: sortOrder,
-            is_primary: sortOrder === 0
-          });
+            sort_order: 200000 + i,
+            is_primary: false
+          })
+          .select("id,image_url,image_key,sort_order,is_primary")
+          .single();
 
       if(imageError) throw imageError;
+
+      newImagesByIndex.set(String(i), newImage);
     }
 
-    // Đồng bộ ảnh chính vào product.image_url
-    const {data:firstImage} =
-      await ddvSupabase
-        .from("product_images")
-        .select("image_url")
-        .eq("product_id", productId)
-        .order("sort_order")
-        .limit(1)
-        .maybeSingle();
+    // 6. Ghép thứ tự theo đúng vị trí bạn vừa kéo
+    const oldImagesById = new Map(
+      oldImages.map(img => [String(img.id), img])
+    );
 
-    if(firstImage?.image_url){
+    const finalImages = [];
+    const usedIds = new Set();
+
+    cards.forEach(card => {
+
+      if(card.dataset.imageId){
+        const image =
+          oldImagesById.get(String(card.dataset.imageId));
+
+        if(image && !usedIds.has(String(image.id))){
+          finalImages.push(image);
+          usedIds.add(String(image.id));
+        }
+      }
+
+      else if(card.dataset.newIndex !== undefined){
+        const image =
+          newImagesByIndex.get(String(card.dataset.newIndex));
+
+        if(image && !usedIds.has(String(image.id))){
+          finalImages.push(image);
+          usedIds.add(String(image.id));
+        }
+      }
+
+    });
+
+    // Phòng trường hợp có ảnh nào chưa nằm trong DOM
+    oldImages.forEach(image => {
+      if(!usedIds.has(String(image.id))){
+        finalImages.push(image);
+        usedIds.add(String(image.id));
+      }
+    });
+
+    newImagesByIndex.forEach(image => {
+      if(!usedIds.has(String(image.id))){
+        finalImages.push(image);
+        usedIds.add(String(image.id));
+      }
+    });
+
+    // 7. Lưu sort_order thật
+    for(let i = 0; i < finalImages.length; i++){
+
+      const {error} = await ddvSupabase
+        .from("product_images")
+        .update({
+          sort_order: i,
+          is_primary: i === 0
+        })
+        .eq("id", finalImages[i].id);
+
+      if(error) throw error;
+    }
+
+    // 8. Đồng bộ ảnh đầu tiên với product.image_url
+    const primaryImage = finalImages[0] || null;
+
+    const {error: productImageError} =
       await ddvSupabase
         .from("product")
         .update({
-          image_url:firstImage.image_url
+          image_url: primaryImage
+            ? primaryImage.image_url
+            : null
         })
-        .eq("id",productId);
-    }
+        .eq("id", productId);
+
+    if(productImageError) throw productImageError;
 
     closeModal("productModal");
     toast("Đã lưu sản phẩm");
