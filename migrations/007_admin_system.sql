@@ -56,6 +56,10 @@ begin
  if tg_table_name='product' then
    if old.purge_started_at is not null then raise exception 'Đang dọn dữ liệu sản phẩm'; end if;
  else
+   if tg_op='UPDATE' then
+     perform 1 from public.product where id=old.product_id for update;
+     if exists(select 1 from public.product where id=old.product_id and purge_started_at is not null) then raise exception 'Đang dọn ảnh sản phẩm'; end if;
+   end if;
    target_id:=case when tg_op='DELETE' then old.product_id else new.product_id end;
    perform 1 from public.product where id=target_id for update;
    if exists(select 1 from public.product where id=target_id and purge_started_at is not null) then

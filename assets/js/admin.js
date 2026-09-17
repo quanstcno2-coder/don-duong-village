@@ -22,7 +22,13 @@ document.addEventListener("DOMContentLoaded",async()=>{
   ddvSupabase.auth.onAuthStateChange((event,session)=>{adminState.session=session;if(!session)openLogin();});
 });
 function openLogin(){$("#loginView").classList.remove("hidden");$("#adminView").classList.add("hidden")}
-function openAdmin(){$("#loginView").classList.add("hidden");$("#adminView").classList.remove("hidden");showTab("dashboard")}
+async function openAdmin(){
+  try{
+    const {data,error}=await ddvSupabase.rpc('ddv_is_admin');
+    if(error||data!==true){openLogin();toast('Tài khoản chưa được cấp quyền Admin. Vui lòng kiểm tra cấu hình quyền.');return;}
+    $("#loginView").classList.add("hidden");$("#adminView").classList.remove("hidden");showTab("dashboard");
+  }catch{openLogin();toast('Chưa xác minh được quyền Admin. Vui lòng thử lại.');}
+}
 async function login(e){
   e.preventDefault();
   const f=e.target,button=f.querySelector('button');
@@ -174,6 +180,22 @@ function renderProductImagesAdmin(images=[]){
   });
 
   preview.innerHTML = html;
+  const key=card=>card.dataset.imageId?'old:'+card.dataset.imageId:'new:'+adminState.pendingProductFiles[Number(card.dataset.newIndex)]?.previewUrl;
+  const order=adminState.productImageOrder||[];
+  [...preview.children].sort((a,b)=>{
+    const ai=order.indexOf(key(a)),bi=order.indexOf(key(b));
+    return (ai<0?Infinity:ai)-(bi<0?Infinity:bi);
+  }).forEach(card=>preview.append(card));
+  for(const card of preview.querySelectorAll('.product-image-card')){
+    const controls=document.createElement('div');controls.className='image-order-controls';
+    for(const [label,direction] of [['←',-1],['→',1]]){
+      const button=document.createElement('button');button.type='button';button.textContent=label;button.setAttribute('aria-label',direction<0?'Đưa ảnh lên trước':'Đưa ảnh ra sau');
+      button.onclick=()=>{const sibling=direction<0?card.previousElementSibling:card.nextElementSibling;if(sibling){if(direction<0)preview.insertBefore(card,sibling);else preview.insertBefore(sibling,card);refreshProductImageOrderUI();}};
+      controls.append(button);
+    }
+    card.append(controls);
+  }
+  refreshProductImageOrderUI();
 }
 
 document.addEventListener("change", (e) => {
@@ -255,6 +277,7 @@ function refreshProductImageOrderUI(){
   if(!preview) return;
 
   const cards = [...preview.querySelectorAll(".product-image-card")];
+  adminState.productImageOrder=cards.map(card=>card.dataset.imageId?'old:'+card.dataset.imageId:'new:'+adminState.pendingProductFiles[Number(card.dataset.newIndex)]?.previewUrl);
 
   cards.forEach((card, index) => {
     card.dataset.galleryIndex = index;
@@ -355,6 +378,7 @@ async function openProduct(p=null){
 
   const f = $("#productForm");
   f.reset();
+  adminState.productImageOrder=[];
 adminState.pendingProductFiles = [];
 adminState.deletedProductImages = []; 
   if(p){
@@ -378,6 +402,7 @@ adminState.deletedProductImages = [];
     adminState.productImages = [];
     renderProductImagesAdmin([]);
   }
+  updateSalePreview();
 }
 function closeModal(id){$("#"+id).classList.add("hidden")}
 async function uploadFile(file,bucket,path){
@@ -559,6 +584,10 @@ const deletedImages = adminState.deletedProductImages || [];
     return;
   }
 
+  if(!f.reportValidity())return;
+  const saveButton=f.querySelector('button:not([type]),button[type="submit"]');
+  if(saveButton?.disabled)return;
+  if(saveButton)saveButton.disabled=true;
   try{
     let productId = id;
 
@@ -771,6 +800,8 @@ for(const image of deletedImages){
   }catch(err){
     console.error(err);
     toast(err.message || "Chưa lưu được sản phẩm");
+  }finally{
+    if(saveButton)saveButton.disabled=false;
   }
 }
 async function deleteProduct(id){if(!ddvSupabase||!confirm('Chuyển sản phẩm vào thùng rác? Có thể khôi phục trong 14 ngày.'))return;await changeProductState(id,'trash');}

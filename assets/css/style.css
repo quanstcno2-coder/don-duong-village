@@ -1344,3 +1344,4 @@ table{min-width:680px}
 #storyImageLine,#storyBody{white-space:pre-line}
 
 @media(max-width:760px){.mobile-product-bar{gap:6px}.mobile-product-bar .btn{font-size:12px;padding:0 8px}.mobile-product-price{font-size:14px!important;flex:1}.mobile-product-price strong{display:block}}
+.image-order-controls{display:flex;gap:5px;padding:5px}.image-order-controls button{min-width:38px;min-height:36px;border:1px solid var(--line);background:var(--cream);border-radius:6px;color:var(--forest);cursor:pointer}

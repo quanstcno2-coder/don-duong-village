@@ -11,12 +11,16 @@ async function workerAdmin(path,options={}){
 }
 async function readAllRows(table){
   const rows=[];
-  for(let offset=0;;offset+=500){
+  const {count,error:countError}=await ddvSupabase.from(table).select('id',{count:'exact',head:true});
+  if(countError||count==null)throw new Error('Không đếm được bảng '+table);
+  for(let offset=0;offset<count;){
     const {data,error}=await ddvSupabase.from(table).select('*').order('id').range(offset,offset+499);
     if(error)throw new Error('Không đọc được bảng '+table);
     rows.push(...data);
-    if(data.length<500)return rows;
+    if(!data.length)throw new Error('Dữ liệu thay đổi trong khi xuất. Vui lòng thử lại.');
+    offset+=data.length;
   }
+  return rows;
 }
 async function loadSystem(){
   const status=$('#systemStatus'),objects=$('#storageObjects');status.textContent='Đang kiểm tra…';objects.replaceChildren();
