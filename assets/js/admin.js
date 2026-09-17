@@ -101,6 +101,12 @@ function renderProductImagesAdmin(images=[]){
         data-gallery-index="${index}"
       >
         <img src="${img.image_url}" alt="Ảnh sản phẩm ${index + 1}">
+        <button
+  type="button"
+  class="product-image-remove"
+  data-remove-old="${img.id}"
+  title="Xóa ảnh"
+>×</button>
         ${index === 0 ? '<span class="product-image-badge">Ảnh chính</span>' : ''}
       </div>
     `;
@@ -117,6 +123,12 @@ function renderProductImagesAdmin(images=[]){
         data-new-index="${index}"
       >
         <img src="${item.previewUrl}" alt="Ảnh mới ${index + 1}">
+        <button
+  type="button"
+  class="product-image-remove"
+  data-remove-new="${index}"
+  title="Bỏ ảnh"
+>×</button>
         ${globalIndex === 0
           ? '<span class="product-image-badge">Ảnh chính</span>'
           : '<span class="product-image-badge">Ảnh mới</span>'}
