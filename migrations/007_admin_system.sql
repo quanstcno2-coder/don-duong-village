@@ -10,6 +10,22 @@ language sql stable security definer set search_path=public as $$
 $$;
 revoke all on function public.ddv_is_admin() from public;
 grant execute on function public.ddv_is_admin() to authenticated;
+-- SECURITY INVOKER retains product RLS; explicit Admin check fails closed even
+-- if older permissive policies still exist. 010 alone enables this RPC.
+create or replace function public.product_lifecycle(p_id bigint,p_action text)
+returns void language plpgsql security invoker set search_path=public as $$
+begin
+  if public.ddv_is_admin() is distinct from true then raise exception 'Không có quyền Admin'; end if;
+  if p_action='trash' then
+    update public.product set deleted_at=now() where id=p_id and deleted_at is null;
+  elsif p_action='restore' then
+    update public.product set deleted_at=null where id=p_id and deleted_at>now()-interval '14 days' and purge_started_at is null;
+  elsif p_action='hide' or p_action='show' then
+    update public.product set visibility=case when p_action='hide' then 'hidden' else 'visible' end where id=p_id and deleted_at is null;
+  else raise exception 'Thao tác không hợp lệ'; end if;
+  if not found then raise exception 'Sản phẩm đã thay đổi hoặc quá hạn khôi phục'; end if;
+end $$;
+revoke all on function public.product_lifecycle(bigint,text) from public,anon,authenticated;
 create or replace function public.ddv_system_stats() returns jsonb
 language plpgsql security definer set search_path=public as $$
 begin

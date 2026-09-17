@@ -21,4 +21,6 @@ create policy "ddv admin image manage" on public.product_images for all to authe
 create policy "ddv storage admin insert" on storage.objects as restrictive for insert to authenticated with check(public.ddv_is_admin());
 create policy "ddv storage admin update" on storage.objects as restrictive for update to authenticated using(public.ddv_is_admin()) with check(public.ddv_is_admin());
 create policy "ddv storage admin delete" on storage.objects as restrictive for delete to authenticated using(public.ddv_is_admin());
+-- Enable lifecycle only after all authorization policies in this transaction.
+grant execute on function public.product_lifecycle(bigint,text) to authenticated;
 commit;

@@ -33,12 +33,15 @@ SQL chưa được chạy trên PostgreSQL/Supabase staging. Worker extension ch
 1. Sao lưu database, policy hiện tại và object R2. Nên thử trên Supabase staging trước; không chạy lại `supabase_setup.sql` cũ sau migrations vì nó có policy rộng.
 2. Đối chiếu schema thật: `product.id` và `product_images.product_id` là số tương thích bigint; bảng `product_images` đã tồn tại; tên cột theo handoff. Nếu khác, sửa migration trước.
 3. Chạy `003_discount.sql`, rồi `005_product_lifecycle.sql`, `006_checkout.sql`, `007_admin_system.sql` trong SQL Editor. Mỗi migration chạy một lần.
+   Lifecycle ở `005` chỉ là placeholder báo lỗi và thu hồi quyền PUBLIC/anon/authenticated. `007` thay bằng implementation yêu cầu `ddv_is_admin() IS TRUE` nhưng vẫn thu hồi quyền gọi. Chỉ cuối transaction `010` mới grant execute cho authenticated sau khi mọi policy hạn chế đã được tạo; không có giai đoạn lifecycle mở cho mọi người đăng nhập. Không chạy riêng lệnh grant hoặc phát hành frontend trước khi hoàn tất `010`.
 4. Trong SQL Editor, thêm UUID tài khoản chủ shop vào `public.ddv_admin_users(user_id)`. Đây là ID ở Authentication, không phải email/mật khẩu. Kiểm tra RPC `ddv_is_admin` trả true cho tài khoản này trước bước tiếp theo.
 5. Duyệt/chạy `010_admin_authorization.sql`. Rà soát policy khác: anonymous không được đọc đơn hàng, sản phẩm ẩn/trash hoặc ảnh của chúng; người đăng nhập không phải Admin không được quản trị. Restrictive policies bổ sung giới hạn, không tự gỡ policy chưa biết.
 6. Ghép `worker/admin-extension.mjs` vào Worker đang chạy. Gọi `handleAdminRequest(request, env)` trước router cũ; nếu response khác null thì return response. Giữ các endpoint `/upload` và `/files/...` hiện tại. Rà soát để chúng cũng xác minh Supabase token và quyền chủ shop; frontend không thể thay thế kiểm tra phía Worker.
 7. Worker bindings: giữ `DDV_IMAGES`; thêm `SUPABASE_URL`, `SUPABASE_PUBLIC_KEY` (khóa public), `ADMIN_USER_IDS` (UUID chủ shop, phân cách dấu phẩy), `ADMIN_ORIGINS` (origin thật của GitHub Pages, có scheme, không có path). Không đưa bất kỳ secret vào browser. Chủ shop triển khai Worker sau kiểm tra staging.
 8. Kiểm tra các bước thủ công bên dưới, rồi mới duyệt merge và triển khai frontend. Frontend mới phụ thuộc migrations nên không phát hành trước SQL. API checkout mới khóa insert đơn trực tiếp; production frontend cũ sẽ không đặt đơn được giữa các bước, cần phối hợp thời điểm chuyển đổi.
 9. Đổi mật khẩu Admin đã lộ trước đây. `replaceState` chỉ làm sạch entry hiện tại; không xóa toàn bộ history cũ, nhật ký server hoặc URL đã được sao chép.
+
+Regression bổ sung cho PR #1: `node tests/migrations.cjs` kiểm tra tĩnh thứ tự tạo hàm/quyền lifecycle, không thực thi SQL. Worker preflight toàn bộ keys trước delete; tests có ảnh sau shared, lỗi RPC, kết quả không xác định và key không hợp lệ, đều không xóa object nào. Kiểm tra thủ công staging trước phát hành: tài khoản thường không gọi được hide/show/trash/restore; Admin chỉ gọi được sau `010`; danh sách Admin giữ thumbnail và cột Nổi bật, có cột Trạng thái riêng.
 
 ## Kiểm thử thủ công trước khi phát hành
 
