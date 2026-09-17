@@ -161,6 +161,56 @@ document.addEventListener("change", (e) => {
 
   renderProductImagesAdmin(existing);
 });
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".product-image-remove");
+
+  if(!btn) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  // Ảnh mới chưa upload
+  if(btn.dataset.removeNew !== undefined){
+    const index = Number(btn.dataset.removeNew);
+
+    const item = adminState.pendingProductFiles?.[index];
+
+    if(item?.previewUrl){
+      URL.revokeObjectURL(item.previewUrl);
+    }
+
+    adminState.pendingProductFiles.splice(index, 1);
+
+    renderProductImagesAdmin(
+      adminState.productImages || []
+    );
+
+    refreshProductImageOrderUI();
+    return;
+  }
+
+  // Ảnh cũ đã lưu
+  if(btn.dataset.removeOld){
+    const id = String(btn.dataset.removeOld);
+
+    const image = (adminState.productImages || [])
+      .find(img => String(img.id) === id);
+
+    if(image){
+      adminState.deletedProductImages.push(image);
+    }
+
+    adminState.productImages =
+      (adminState.productImages || [])
+        .filter(img => String(img.id) !== id);
+
+    renderProductImagesAdmin(
+      adminState.productImages
+    );
+
+    refreshProductImageOrderUI();
+  }
+});
 let productImageDragSource = null;
 
 function refreshProductImageOrderUI(){
@@ -269,6 +319,7 @@ async function openProduct(p=null){
   const f = $("#productForm");
   f.reset();
 adminState.pendingProductFiles = [];
+adminState.deletedProductImages = []; 
   if(p){
     f.id.value = p.id;
     f.name.value = p.name || "";
