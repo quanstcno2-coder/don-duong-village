@@ -336,6 +336,7 @@ adminState.deletedProductImages = [];
     f.id.value = p.id;
     f.name.value = p.name || "";
     f.price.value = p.price || 0;
+    f.elements.discount_percent.value=p.discount_percent||0;
     f.stock.value = p.stock || 0;
     f.description.value = p.description || "";
     f.product_details.value = p.product_details || "";
@@ -539,6 +540,7 @@ const deletedImages = adminState.deletedProductImages || [];
     const payload = {
       name: f.name.value.trim(),
       price: Number(f.price.value || 0),
+      discount_percent: Number(f.elements.discount_percent.value || 0),
       stock: Number(f.stock.value || 0),
       description: f.description.value.trim(),
       product_details: f.product_details.value.trim(),

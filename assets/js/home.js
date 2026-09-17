@@ -76,7 +76,7 @@ function productCard(p){
     </a>
     <div class="product-info">
       <h3>${safe(p.name)}</h3>
-      <div class="price">${money(p.price)}</div>
+      <div class="price">${priceMarkup(p)}</div>
       <div class="actions">
         <a class="btn secondary small" href="product.html?id=${p.id}">Xem chi tiết</a>
         <button class="btn primary small">+ Giỏ hàng</button>

@@ -19,8 +19,21 @@ function renderCart(){
   const total=cart.reduce((s,x)=>s+x.price*x.qty,0);
   if(summary) summary.innerHTML=`<div class="total-row"><span>Tạm tính</span><b>${money(total)}</b></div><div class="total-row grand"><span>Tổng cộng</span><span>${money(total)}</span></div>`;
 }
+async function refreshCartPrices(){
+  if(!window.ddvSupabase)return true;
+  const cart=cartGet();
+  for(const item of cart){
+    const p=await ddvApi.product(item.id);
+    if(!p){toast("Có sản phẩm không còn bán. Vui lòng xóa khỏi giỏ hàng.");return false;}
+    item.price=effectivePrice(p);item.name=p.name;
+  }
+  cartSave(cart);return true;
+}
 async function submitOrder(e){
-  e.preventDefault(); const cart=cartGet(); if(!cart.length){toast("Giỏ hàng đang trống");return}
+  e.preventDefault();
+  if(!await refreshCartPrices())return;
+  renderCart();
+  const cart=cartGet(); if(!cart.length){toast("Giỏ hàng đang trống");return}
   const fd=new FormData(e.target), customer=Object.fromEntries(fd.entries());
   const total=cart.reduce((s,x)=>s+x.price*x.qty,0);
   if(!window.ddvSupabase){toast("Bản demo: cần kết nối Supabase để lưu đơn hàng");return}
