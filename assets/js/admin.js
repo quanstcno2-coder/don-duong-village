@@ -72,32 +72,79 @@ async function loadProductImagesForAdmin(productId){
 
   return data || [];
 }
-
 function renderProductImagesAdmin(images=[]){
   const preview = $("#productPreview");
   const count = $("#productImageCount");
 
+  const pending = adminState.pendingProductFiles || [];
+  const total = images.length + pending.length;
+
   if(count){
-    count.textContent = `${images.length}/8 ảnh`;
+    count.textContent = `${total}/8 ảnh`;
   }
 
   if(!preview) return;
 
-  if(!images.length){
+  if(total === 0){
     preview.innerHTML = '<div class="muted">Chưa có ảnh sản phẩm</div>';
     return;
   }
 
-  preview.innerHTML = images.map((img, index) => `
-    <div
-      class="product-image-card ${index === 0 ? "is-primary" : ""}"
-      data-image-id="${img.id}"
-    >
-      <img src="${img.image_url}" alt="Ảnh sản phẩm ${index + 1}">
-      ${index === 0 ? '<span class="product-image-badge">Ảnh chính</span>' : ''}
-    </div>
-  `).join("");
+  let html = "";
+
+  images.forEach((img, index) => {
+    html += `
+      <div
+        class="product-image-card ${index === 0 ? "is-primary" : ""}"
+        data-image-id="${img.id}"
+      >
+        <img src="${img.image_url}" alt="Ảnh sản phẩm ${index + 1}">
+        ${index === 0 ? '<span class="product-image-badge">Ảnh chính</span>' : ''}
+      </div>
+    `;
+  });
+
+  pending.forEach((item, index) => {
+    const globalIndex = images.length + index;
+
+    html += `
+      <div
+        class="product-image-card ${globalIndex === 0 ? "is-primary" : ""}"
+        data-new-index="${index}"
+      >
+        <img src="${item.previewUrl}" alt="Ảnh mới ${index + 1}">
+        ${globalIndex === 0
+          ? '<span class="product-image-badge">Ảnh chính</span>'
+          : '<span class="product-image-badge">Ảnh mới</span>'}
+      </div>
+    `;
+  });
+
+  preview.innerHTML = html;
 }
+
+document.addEventListener("change", (e) => {
+  if(e.target.id !== "productImageInput") return;
+
+  const input = e.target;
+  const files = Array.from(input.files || []);
+  const existing = adminState.productImages || [];
+
+  if(existing.length + files.length > 8){
+    alert(`Sản phẩm chỉ được tối đa 8 ảnh. Hiện đã có ${existing.length} ảnh.`);
+    input.value = "";
+    adminState.pendingProductFiles = [];
+    renderProductImagesAdmin(existing);
+    return;
+  }
+
+  adminState.pendingProductFiles = files.map(file => ({
+    file,
+    previewUrl: URL.createObjectURL(file)
+  }));
+
+  renderProductImagesAdmin(existing);
+});
 
 async function openProduct(p=null){
   adminState.editProduct = p;
@@ -106,7 +153,7 @@ async function openProduct(p=null){
 
   const f = $("#productForm");
   f.reset();
-
+adminState.pendingProductFiles = [];
   if(p){
     f.id.value = p.id;
     f.name.value = p.name || "";
