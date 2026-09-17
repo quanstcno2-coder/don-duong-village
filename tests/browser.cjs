@@ -51,6 +51,28 @@ const stub=`window.supabase={createClient:()=>({auth:{getSession:()=>new Promise
  const bought=await page.evaluate(()=>cartGet());assert.equal(bought.length,1);assert.equal(bought[0].qty,2);assert.equal(bought[0].price,80000);
  // Regression of the actual Admin gallery save using an in-memory DB adapter.
  await page.goto(base+'/admin/');
+ const listResult=await page.evaluate(async()=>{
+   const data=[
+     {id:1,name:'Visible featured',image_url:'assets/images/story-main.png',is_featured:true,visibility:'visible',price:100000,stock:2},
+     {id:2,name:'Hidden regular',image_url:null,is_featured:false,visibility:'hidden',price:200000,stock:3},
+     {id:3,name:'Trash featured',image_url:'assets/images/logo-horizontal.png',is_featured:true,visibility:'visible',deleted_at:new Date().toISOString(),price:300000,stock:4}
+   ];
+   ddvSupabase.from=()=>{const q={select:()=>q,order:()=>q,then:resolve=>Promise.resolve({data,error:null}).then(resolve)};return q;};
+   const filter=document.querySelector('#productStatusFilter');filter.value='all';await loadProductsAdmin();
+   const body=document.querySelector('#productsTable');
+   const headers=[...body.closest('table').querySelectorAll('th')].map(th=>th.textContent);
+   const rows=[...body.rows].map(row=>({cells:[...row.cells].map(c=>c.textContent),image:row.cells[0].querySelector('img')?.getAttribute('src')||null,alt:row.cells[0].querySelector('img')?.alt||null}));
+   const filters={};
+   for(const value of ['visible','hidden','trash']){filter.value=value;await loadProductsAdmin();filters[value]=[...body.rows].map(row=>row.cells[1].textContent);}
+   return {headers,rows,filters};
+ });
+ assert.deepEqual(listResult.headers,['Ảnh','Tên','Giá','Tồn','Nổi bật','Trạng thái','Thao tác']);
+ assert.ok(listResult.rows.every(row=>row.cells.length===7));
+ assert.equal(listResult.rows[0].image,'../assets/images/story-main.png');assert.equal(listResult.rows[0].alt,'Visible featured');
+ assert.equal(listResult.rows[0].cells[4],'Nổi bật');assert.equal(listResult.rows[0].cells[5],'Hiển thị');
+ assert.equal(listResult.rows[1].image,null);assert.equal(listResult.rows[1].cells[0],'—');assert.equal(listResult.rows[1].cells[4],'—');assert.equal(listResult.rows[1].cells[5],'Đang ẩn');
+ assert.equal(listResult.rows[2].cells[4],'Nổi bật');assert.equal(listResult.rows[2].cells[5],'Thùng rác');
+ assert.deepEqual(listResult.filters,{visible:['Visible featured'],hidden:['Hidden regular'],trash:['Trash featured']});
  const galleryResult=await page.evaluate(async()=>{
    const p={id:77,name:'Kiểm thử gallery',price:100000,stock:8,discount_percent:20};
    let rows=Array.from({length:8},(_,i)=>({id:i+1,product_id:77,image_url:'assets/images/story-main.png?'+i,image_key:'products/'+i+'.webp',sort_order:i,is_primary:i===0}));

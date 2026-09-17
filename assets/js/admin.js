@@ -72,7 +72,7 @@ async function loadDashboard(){
 }
 async function loadProductsAdmin(){
  const body=$("#productsTable");if(!body)return;
- if(!ddvSupabase){body.innerHTML='<tr><td colspan="6">Chế độ demo</td></tr>';return;}
+ if(!ddvSupabase){body.innerHTML='<tr><td colspan="7">Chế độ demo</td></tr>';return;}
  const {data,error}=await ddvSupabase.from('product').select('*').order('created_at',{ascending:false});
  if(error){toast('Không tải được sản phẩm');return;}
  const filter=$('#productStatusFilter').value;
@@ -81,7 +81,13 @@ async function loadProductsAdmin(){
    const status=p.deleted_at?'trash':p.visibility||'visible';
    if(filter!=='all'&&filter!==status)continue;
    const row=document.createElement('tr');
-   for(const text of [p.image_url?'Có ảnh':'—',p.name,money(effectivePrice(p)),p.stock??0,status==='trash'?'Thùng rác':status==='hidden'?'Đang ẩn':'Hiển thị']){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}
+   const thumbnail=document.createElement('td');
+   if(p.image_url){
+     const image=document.createElement('img');image.src=resolvePath(p.image_url);image.alt=p.name||'Ảnh sản phẩm';image.loading='lazy';
+     Object.assign(image.style,{width:'54px',height:'54px',objectFit:'cover',borderRadius:'8px'});thumbnail.append(image);
+   }else thumbnail.textContent='—';
+   row.append(thumbnail);
+   for(const text of [p.name,money(effectivePrice(p)),p.stock??0,p.is_featured?'Nổi bật':'—',status==='trash'?'Thùng rác':status==='hidden'?'Đang ẩn':'Hiển thị']){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}
    const actions=document.createElement('td');
    const button=(label,fn)=>{const b=document.createElement('button');b.type='button';b.className='btn secondary small';b.textContent=label;b.onclick=fn;actions.append(b,' ');};
    if(status==='trash'){
