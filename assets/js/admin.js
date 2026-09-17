@@ -454,6 +454,54 @@ async function uploadProductImageToR2(file){
 
   return result;
 }
+async function deleteProductImageFromR2(imageKey){
+  if(!imageKey) return;
+
+  if(!ddvSupabase){
+    throw new Error("Chưa kết nối Supabase");
+  }
+
+  const {data:{session}} =
+    await ddvSupabase.auth.getSession();
+
+  if(!session?.access_token){
+    throw new Error("Phiên đăng nhập Admin đã hết hạn");
+  }
+
+  const workerUrl = String(
+    window.DDV_CONFIG.R2_WORKER_URL || ""
+  ).replace(/\/+$/, "");
+
+  if(!workerUrl){
+    throw new Error("Chưa cấu hình R2 Worker");
+  }
+
+  const safeKey = String(imageKey)
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+
+  const response = await fetch(
+    `${workerUrl}/files/${safeKey}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    }
+  );
+
+  const result =
+    await response.json().catch(() => ({}));
+
+  if(!response.ok){
+    throw new Error(
+      result.error || "Xóa ảnh khỏi R2 thất bại"
+    );
+  }
+
+  return result;
+}
 async function saveProduct(e){
   e.preventDefault();
 
@@ -467,7 +515,7 @@ async function saveProduct(e){
 
   const pendingFiles = adminState.pendingProductFiles || [];
   const currentImages = adminState.productImages || [];
-
+const deletedImages = adminState.deletedProductImages || [];
   if(currentImages.length + pendingFiles.length > 8){
     toast("Mỗi sản phẩm chỉ được tối đa 8 ảnh");
     return;
@@ -517,8 +565,9 @@ async function saveProduct(e){
     if(existingError) throw existingError;
 
     const oldImages = existingImages || [];
-
-    if(oldImages.length + pendingFiles.length > 8){
+const deletedIds = new Set(deletedImages.map(img => String(img.id)));
+const keptOldImages = oldImages.filter(img => !deletedIds.has(String(img.id)));
+   if(keptOldImages.length + pendingFiles.length > 8){
       toast("Sản phẩm chỉ được tối đa 8 ảnh");
       return;
     }
@@ -570,9 +619,9 @@ async function saveProduct(e){
     }
 
     // 6. Ghép thứ tự theo đúng vị trí bạn vừa kéo
-    const oldImagesById = new Map(
-      oldImages.map(img => [String(img.id), img])
-    );
+   const oldImagesById = new Map(
+  keptOldImages.map(img => [String(img.id), img])
+);
 
     const finalImages = [];
     const usedIds = new Set();
@@ -602,7 +651,7 @@ async function saveProduct(e){
     });
 
     // Phòng trường hợp có ảnh nào chưa nằm trong DOM
-    oldImages.forEach(image => {
+   keptOldImages.forEach(image => {
       if(!usedIds.has(String(image.id))){
         finalImages.push(image);
         usedIds.add(String(image.id));
@@ -644,9 +693,40 @@ async function saveProduct(e){
         .eq("id", productId);
 
     if(productImageError) throw productImageError;
+// 9. Xóa thật các ảnh đã bấm dấu ×
+let r2DeleteWarning = false;
 
+for(const image of deletedImages){
+
+  // Xóa dòng trong Supabase trước
+  const {error: deleteImageError} = await ddvSupabase
+    .from("product_images")
+    .delete()
+    .eq("id", image.id)
+    .eq("product_id", productId);
+
+  if(deleteImageError) throw deleteImageError;
+
+  // Sau đó xóa file thật khỏi R2
+  if(image.image_key){
+    try{
+      await deleteProductImageFromR2(image.image_key);
+    }catch(r2Error){
+      r2DeleteWarning = true;
+      console.error(
+        "Không xóa được file R2:",
+        image.image_key,
+        r2Error
+      );
+    }
+  }
+}
     closeModal("productModal");
-    toast("Đã lưu sản phẩm");
+    toast(
+  r2DeleteWarning
+    ? "Đã lưu sản phẩm, nhưng có ảnh chưa xóa được khỏi R2"
+    : "Đã lưu sản phẩm"
+);
     loadProductsAdmin();
 
   }catch(err){
