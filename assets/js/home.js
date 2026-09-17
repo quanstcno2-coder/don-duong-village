@@ -2,6 +2,9 @@
 document.addEventListener("DOMContentLoaded",async()=>{
   const sec=await ddvApi.sections();
 
+  $("#featuredSubtitle").textContent=sec.featured_intro?.title??DDV_DEMO.sections.featured_intro.title;
+  $("#storyEyebrow").textContent=sec.story_labels?.title??DDV_DEMO.sections.story_labels.title;
+  $("#storyImageLine").textContent=sec.story_labels?.body??DDV_DEMO.sections.story_labels.body;
   const hero=sec.hero||{};
   const heroEl=$("#hero");
   if(heroEl){

@@ -1,7 +1,9 @@
 
 let adminState={session:null,tab:"dashboard",editProduct:null,editPost:null,editAbout:null};
-const sectionKeys=["hero","side_banner","brand_story","bottom_banner"];
+const sectionKeys=["hero","side_banner","brand_story","bottom_banner","featured_intro","story_labels"];
 const sectionLabels={
+  featured_intro:"Trang chủ · Tiêu đề sản phẩm nổi bật",
+  story_labels:"Trang chủ · Nhãn câu chuyện & dòng trên ảnh",
   hero:"Trang chủ · Hero Banner",
   side_banner:"Trang chủ · Banner cạnh sản phẩm",
   brand_story:"Trang chủ · Câu chuyện thương hiệu",

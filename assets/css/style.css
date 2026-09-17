@@ -1340,3 +1340,5 @@ table{min-width:680px}
 @media(max-width:760px){.product-lightbox{padding:65px 12px}.product-lightbox .lightbox-prev,.product-lightbox .lightbox-next{top:auto;bottom:50px}}
 
 .discount-badge{display:inline-block;background:var(--forest);color:white;border-radius:6px;padding:3px 7px;font-size:13px} .price del,.detail-price del,.mobile-product-price del{font-size:.75em;color:var(--muted)}
+
+#storyImageLine,#storyBody{white-space:pre-line}

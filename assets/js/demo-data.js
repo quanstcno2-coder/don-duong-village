@@ -12,6 +12,8 @@ window.DDV_DEMO = {
     support_hours: "8:00 - 20:00"
   },
   sections: {
+    featured_intro: {title:"Tinh hoa thiên nhiên, đồng hành cùng sức khỏe",is_active:true},
+    story_labels: {title:"CÂU CHUYỆN THƯƠNG HIỆU",body:"Giữ vị thật\ntừ thiên nhiên",is_active:true},
     hero: {
       title: "Chọn điều phù hợp, sống điều mình yêu",
       subtitle: "Những lựa chọn chăm sóc sức khỏe gần gũi, rõ ràng và tử tế — để việc quan tâm đến bản thân trở thành một phần tự nhiên trong cuộc sống mỗi ngày.",
