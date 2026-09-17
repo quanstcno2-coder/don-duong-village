@@ -36,10 +36,16 @@ export async function handleAdminRequest(request, env){
       // Claim locks out restoration and image edits; idempotent retries are safe.
       const claim=await rpc('claim_product_purge',{p_id:body.product_id});
       if(!claim)return json({error:'Sản phẩm chưa đủ 14 ngày'},409);
-      for(const key of claim.keys){
-        if(!key.startsWith('products/'))throw new Error('Image key ngoài products/');
+      if(!Array.isArray(claim.keys))throw new Error('Danh sách image keys không hợp lệ');
+      const keys=[...new Set(claim.keys)];
+      // Preflight the entire batch before making any irreversible R2 write.
+      for(const key of keys){
+        if(typeof key!=='string'||!key.startsWith('products/')||key.length>1024||/[\\\x00-\x1f\x7f]/.test(key)||key.split('/').some(part=>!part||part==='.'||part==='..'))throw new Error('Image key không hợp lệ');
         // Do not delete an object referenced by another product.
-        if(await rpc('product_image_key_shared',{p_id:body.product_id,p_key:key}))throw new Error('Ảnh được dùng chung');
+        const shared=await rpc('product_image_key_shared',{p_id:body.product_id,p_key:key});
+        if(shared!==false)throw new Error('Ảnh dùng chung hoặc chưa xác minh được');
+      }
+      for(const key of keys){
         await env.DDV_IMAGES.delete(key);
       }
       await rpc('finish_product_purge',{p_id:body.product_id});
