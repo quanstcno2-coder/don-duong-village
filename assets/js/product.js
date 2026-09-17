@@ -106,4 +106,3 @@ if(detailsEl && infoSection){
   document.body.appendChild(mobileBar);
   document.body.classList.add("has-mobile-product-bar");
 });
-

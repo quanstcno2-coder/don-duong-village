@@ -1117,4 +1117,3 @@ async function saveSettings(e){
  const {error}=await ddvSupabase.from("site_settings").upsert(p,{onConflict:"id"});
  if(error){console.error(error);toast("Chưa lưu được");return}toast("Đã lưu thông tin doanh nghiệp");
 }
-
