@@ -1342,3 +1342,5 @@ table{min-width:680px}
 .discount-badge{display:inline-block;background:var(--forest);color:white;border-radius:6px;padding:3px 7px;font-size:13px} .price del,.detail-price del,.mobile-product-price del{font-size:.75em;color:var(--muted)}
 
 #storyImageLine,#storyBody{white-space:pre-line}
+
+@media(max-width:760px){.mobile-product-bar{gap:6px}.mobile-product-bar .btn{font-size:12px;padding:0 8px}.mobile-product-price{font-size:14px!important;flex:1}.mobile-product-price strong{display:block}}
