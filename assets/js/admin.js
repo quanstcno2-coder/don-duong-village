@@ -17,16 +17,28 @@ document.addEventListener("DOMContentLoaded",async()=>{
   }
   const {data:{session}}=await ddvSupabase.auth.getSession();
   if(session){adminState.session=session;openAdmin()} else openLogin();
-  $("#loginForm")?.addEventListener("submit",login);
+  ddvSupabase.auth.onAuthStateChange((event,session)=>{adminState.session=session;if(!session)openLogin();});
 });
 function openLogin(){$("#loginView").classList.remove("hidden");$("#adminView").classList.add("hidden")}
 function openAdmin(){$("#loginView").classList.add("hidden");$("#adminView").classList.remove("hidden");showTab("dashboard")}
 async function login(e){
-  e.preventDefault(); const fd=new FormData(e.target);
-  const {data,error}=await ddvSupabase.auth.signInWithPassword({email:fd.get("email"),password:fd.get("password")});
-  if(error){toast("Đăng nhập chưa thành công");return} adminState.session=data.session;openAdmin();
+  e.preventDefault();
+  const f=e.target,button=f.querySelector('button');
+  if(button.disabled)return;
+  if(!ddvSupabase){toast('Chưa kết nối hệ thống đăng nhập');return;}
+  button.disabled=true;
+  try{
+    const {data,error}=await ddvSupabase.auth.signInWithPassword({email:f.elements.email.value.trim(),password:f.elements.password.value});
+    f.elements.password.value='';
+    if(error){toast('Email hoặc mật khẩu chưa đúng');return;}
+    adminState.session=data.session;openAdmin();
+  }catch{f.elements.password.value='';toast('Không kết nối được hệ thống đăng nhập. Vui lòng thử lại.');}
+  finally{button.disabled=false;}
 }
-async function logout(){if(ddvSupabase)await ddvSupabase.auth.signOut();location.reload()}
+async function logout(){
+  if(ddvSupabase){const {error}=await ddvSupabase.auth.signOut();if(error){toast('Chưa đăng xuất được. Vui lòng thử lại.');return;}}
+  adminState.session=null;location.reload();
+}
 function showTab(tab){
   adminState.tab=tab; $$(".admin-menu button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
   $$(".admin-section").forEach(x=>x.classList.add("hidden")); $("#tab-"+tab)?.classList.remove("hidden");
@@ -1047,3 +1059,4 @@ async function saveSettings(e){
  const {error}=await ddvSupabase.from("site_settings").upsert(p,{onConflict:"id"});
  if(error){console.error(error);toast("Chưa lưu được");return}toast("Đã lưu thông tin doanh nghiệp");
 }
+
