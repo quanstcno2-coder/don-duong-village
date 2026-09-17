@@ -44,8 +44,9 @@ async function logout(){
 function showTab(tab){
   adminState.tab=tab; $$(".admin-menu button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
   $$(".admin-section").forEach(x=>x.classList.add("hidden")); $("#tab-"+tab)?.classList.remove("hidden");
-  const title={dashboard:"Tổng quan",products:"Sản phẩm",orders:"Đơn hàng",posts:"Bài viết",pages:"Trang website",about:"Về chúng tôi",settings:"Cài đặt"}[tab]||"Admin";
+  const title={system:"Hệ thống & lưu trữ",dashboard:"Tổng quan",products:"Sản phẩm",orders:"Đơn hàng",posts:"Bài viết",pages:"Trang website",about:"Về chúng tôi",settings:"Cài đặt"}[tab]||"Admin";
   $("#adminTitle").textContent=title;
+  if(tab==="system")loadSystem();
   if(tab==="dashboard")loadDashboard();
   if(tab==="products")loadProductsAdmin();
   if(tab==="orders")loadOrders();
