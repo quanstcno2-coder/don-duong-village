@@ -56,11 +56,77 @@ async function loadProductsAdmin(){
  if(error){console.error(error);return}
  body.innerHTML=(data||[]).map(p=>`<tr><td>${p.image_url?`<img src="${p.image_url}" style="width:54px;height:54px;object-fit:cover;border-radius:8px">`:"—"}</td><td>${safe(p.name)}</td><td>${money(p.price)}</td><td>${p.stock??0}</td><td>${p.is_featured?"Nổi bật":"—"}</td><td><button class="btn secondary small" onclick='openProduct(${JSON.stringify(p)})'>Sửa</button> <button class="btn danger small" onclick="deleteProduct(${p.id})">Xóa</button></td></tr>`).join("");
 }
-function openProduct(p=null){
- adminState.editProduct=p; $("#productModal").classList.remove("hidden");
- const f=$("#productForm"); f.reset();
- if(p){f.id.value=p.id;f.name.value=p.name||"";f.price.value=p.price||0;f.stock.value=p.stock||0;f.description.value=p.description||"";f.product_details.value=p.product_details||"";f.is_featured.checked=!!p.is_featured; $("#productPreview").innerHTML=p.image_url?`<img src="${p.image_url}">`:"Chưa có ảnh";}
- else {f.id.value="";$("#productPreview").innerHTML="Chọn ảnh sản phẩm thật";}
+async function loadProductImagesForAdmin(productId){
+  if(!ddvSupabase || !productId) return [];
+
+  const {data, error} = await ddvSupabase
+    .from("product_images")
+    .select("id,image_url,image_key,sort_order,is_primary")
+    .eq("product_id", productId)
+    .order("sort_order", {ascending:true});
+
+  if(error){
+    console.error("Không tải được ảnh sản phẩm:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+function renderProductImagesAdmin(images=[]){
+  const preview = $("#productPreview");
+  const count = $("#productImageCount");
+
+  if(count){
+    count.textContent = `${images.length}/8 ảnh`;
+  }
+
+  if(!preview) return;
+
+  if(!images.length){
+    preview.innerHTML = '<div class="muted">Chưa có ảnh sản phẩm</div>';
+    return;
+  }
+
+  preview.innerHTML = images.map((img, index) => `
+    <div
+      class="product-image-card ${index === 0 ? "is-primary" : ""}"
+      data-image-id="${img.id}"
+    >
+      <img src="${img.image_url}" alt="Ảnh sản phẩm ${index + 1}">
+      ${index === 0 ? '<span class="product-image-badge">Ảnh chính</span>' : ''}
+    </div>
+  `).join("");
+}
+
+async function openProduct(p=null){
+  adminState.editProduct = p;
+
+  $("#productModal").classList.remove("hidden");
+
+  const f = $("#productForm");
+  f.reset();
+
+  if(p){
+    f.id.value = p.id;
+    f.name.value = p.name || "";
+    f.price.value = p.price || 0;
+    f.stock.value = p.stock || 0;
+    f.description.value = p.description || "";
+    f.product_details.value = p.product_details || "";
+    f.is_featured.checked = !!p.is_featured;
+
+    const images = await loadProductImagesForAdmin(p.id);
+
+    adminState.productImages = images;
+    renderProductImagesAdmin(images);
+
+  }else{
+    f.id.value = "";
+
+    adminState.productImages = [];
+    renderProductImagesAdmin([]);
+  }
 }
 function closeModal(id){$("#"+id).classList.add("hidden")}
 async function uploadFile(file,bucket,path){
