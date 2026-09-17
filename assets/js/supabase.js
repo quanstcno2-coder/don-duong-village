@@ -23,7 +23,7 @@
     },
     async products(opts={}){
       if(!window.ddvSupabase) return window.DDV_DEMO.products;
-      let q=window.ddvSupabase.from("product").select("*").order("created_at",{ascending:false});
+      let q=window.ddvSupabase.from("product").select("*").eq("visibility","visible").is("deleted_at",null).order("created_at",{ascending:false});
       if(opts.featured) q=q.eq("is_featured",true);
       if(opts.limit) q=q.limit(opts.limit);
       const {data,error}=await q;
@@ -31,7 +31,7 @@
     },
     async product(id){
       if(!window.ddvSupabase) return null;
-      const {data,error}=await window.ddvSupabase.from("product").select("*").eq("id",id).maybeSingle();
+      const {data,error}=await window.ddvSupabase.from("product").select("*").eq("visibility","visible").is("deleted_at",null).eq("id",id).maybeSingle();
       return error?null:data;
     },
     async posts(limit){

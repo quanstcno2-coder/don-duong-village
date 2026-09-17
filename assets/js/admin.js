@@ -64,11 +64,33 @@ async function loadDashboard(){
   $("#stats").innerHTML=`<div class="stat"><span>Sản phẩm</span><strong>${p||0}</strong></div><div class="stat"><span>Đơn hàng</span><strong>${o||0}</strong></div><div class="stat"><span>Bài viết</span><strong>${b||0}</strong></div><div class="stat"><span>Hệ thống</span><strong>OK</strong></div>`;
 }
 async function loadProductsAdmin(){
- const body=$("#productsTable"); if(!body)return;
- if(!ddvSupabase){body.innerHTML=`<tr><td colspan="6">Chế độ demo — kết nối Supabase để quản lý dữ liệu thật.</td></tr>`;return}
- const {data,error}=await ddvSupabase.from("product").select("*").order("created_at",{ascending:false});
- if(error){console.error(error);return}
- body.innerHTML=(data||[]).map(p=>`<tr><td>${p.image_url?`<img src="${p.image_url}" style="width:54px;height:54px;object-fit:cover;border-radius:8px">`:"—"}</td><td>${safe(p.name)}</td><td>${money(p.price)}</td><td>${p.stock??0}</td><td>${p.is_featured?"Nổi bật":"—"}</td><td><button class="btn secondary small" onclick='openProduct(${JSON.stringify(p)})'>Sửa</button> <button class="btn danger small" onclick="deleteProduct(${p.id})">Xóa</button></td></tr>`).join("");
+ const body=$("#productsTable");if(!body)return;
+ if(!ddvSupabase){body.innerHTML='<tr><td colspan="6">Chế độ demo</td></tr>';return;}
+ const {data,error}=await ddvSupabase.from('product').select('*').order('created_at',{ascending:false});
+ if(error){toast('Không tải được sản phẩm');return;}
+ const filter=$('#productStatusFilter').value;
+ body.replaceChildren();
+ for(const p of data||[]){
+   const status=p.deleted_at?'trash':p.visibility||'visible';
+   if(filter!=='all'&&filter!==status)continue;
+   const row=document.createElement('tr');
+   for(const text of [p.image_url?'Có ảnh':'—',p.name,money(effectivePrice(p)),p.stock??0,status==='trash'?'Thùng rác':status==='hidden'?'Đang ẩn':'Hiển thị']){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}
+   const actions=document.createElement('td');
+   const button=(label,fn)=>{const b=document.createElement('button');b.type='button';b.className='btn secondary small';b.textContent=label;b.onclick=fn;actions.append(b,' ');};
+   if(status==='trash'){
+     const remaining=Math.max(0,Math.ceil((new Date(p.deleted_at).getTime()+14*86400000-Date.now())/86400000));
+     if(remaining&&!p.purge_started_at)button('Khôi phục ('+remaining+' ngày)',()=>changeProductState(p.id,'restore'));
+     else actions.append(document.createTextNode('Hết hạn khôi phục'));
+   }else{
+     button('Sửa',()=>openProduct(p));button(status==='hidden'?'Hiển thị':'Ẩn',()=>changeProductState(p.id,status==='hidden'?'show':'hide'));button('Chuyển vào thùng rác',()=>deleteProduct(p.id));
+   }
+   row.append(actions);body.append(row);
+ }
+}
+async function changeProductState(id,action){
+ const {error}=await ddvSupabase.rpc('product_lifecycle',{p_id:id,p_action:action});
+ if(error){toast('Chưa đổi được trạng thái. Kiểm tra migration và quyền truy cập.');return;}
+ toast('Đã cập nhật trạng thái');loadProductsAdmin();
 }
 async function loadProductImagesForAdmin(productId){
   if(!ddvSupabase || !productId) return [];
@@ -750,7 +772,7 @@ for(const image of deletedImages){
     toast(err.message || "Chưa lưu được sản phẩm");
   }
 }
-async function deleteProduct(id){if(!confirm("Xóa sản phẩm này?")||!ddvSupabase)return;const {error}=await ddvSupabase.from("product").delete().eq("id",id);if(error)toast("Không xóa được");else{toast("Đã xóa");loadProductsAdmin()}}
+async function deleteProduct(id){if(!ddvSupabase||!confirm('Chuyển sản phẩm vào thùng rác? Có thể khôi phục trong 14 ngày.'))return;await changeProductState(id,'trash');}
 async function loadOrders(){
  const body=$("#ordersTable"); if(!ddvSupabase){body.innerHTML=`<tr><td colspan="7">Chế độ demo.</td></tr>`;return}
  const {data}=await ddvSupabase.from("web_orders").select("*").order("created_at",{ascending:false}).limit(100);
