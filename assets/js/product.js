@@ -18,6 +18,19 @@ document.addEventListener("DOMContentLoaded",async()=>{
      <div class="qty"><button id="minus">−</button><span id="qv">1</span><button id="plus">+</button></div>
      <div><button id="addBtn" class="btn primary">Thêm vào giỏ hàng →</button></div>
    </div>`;
+  const detailsEl = $("#productDetails");
+const infoSection = $("#productInfoSection");
+
+if(detailsEl && infoSection){
+  const details = (p.product_details || "").trim();
+
+  if(details){
+    detailsEl.textContent = details;
+    detailsEl.style.whiteSpace = "pre-line";
+  }else{
+    infoSection.style.display = "none";
+  }
+}
   let q=1;$("#minus").onclick=()=>{$("#qv").textContent=q=Math.max(1,q-1)};$("#plus").onclick=()=>{$("#qv").textContent=++q};
   const add=()=>addToCart(p,q);
   $("#addBtn").onclick=add;
