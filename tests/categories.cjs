@@ -4,6 +4,15 @@ const root=path.resolve(__dirname,'..');
 const sql=fs.readFileSync(path.join(root,'migrations/011_product_categories.sql'),'utf8').replace(/--[^\n]*/g,'');
 assert.match(sql,/add column if not exists category_id bigint\s*;/i,'Nullable, no default/backfill for existing products');
 assert.match(sql,/foreign key\(category_id\) references public\.product_categories\(id\) on delete set null/i);
+assert.match(sql,/if not exists\(select 1 from pg_constraint where conrelid='public\.product'::regclass and contype='f' and conkey=array\[category_att\][\s\S]*?confrelid='public\.product_categories'::regclass and confkey=array\[target_att\] and confdeltype='n'\) then[\s\S]*?add constraint product_category_id_fkey/i,'Equivalent FK guard, including differently named FK');
+assert.match(sql,/conname='product_category_id_fkey'\) then\s+raise exception/i,'Fail closed on conflicting name');
+assert.match(sql,/confdeltype<>'n'\)\) then\s+raise exception/i,'Fail closed on incompatible FK');
+assert.match(sql,/drop trigger if exists ddv_category_updated_at on public\.product_categories;\s*create trigger ddv_category_updated_at/i);
+for(const match of sql.matchAll(/create policy "([^"]+)" on public\.product_categories/g)){
+ const drop='drop policy if exists "'+match[1]+'" on public.product_categories;';
+ assert.ok(sql.indexOf(drop)>=0&&sql.indexOf(drop)<match.index,match[1]+': drop before recreate');
+}
+assert.ok(!/drop column|restart|setval|disable row level security/i.test(sql),'No column removal, identity reset, or RLS weakening');
 assert.ok(!/delete from|truncate|drop table|update public\.product|product_images|ddv_checkout|product_lifecycle/i.test(sql),'Additive only; no product data reset or unrelated modifications');
 assert.match(sql,/product_categories enable row level security/i);
 assert.match(sql,/for select to anon,authenticated using\(is_active=true\)/i);

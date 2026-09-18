@@ -17,12 +17,13 @@ Branch `codex/categories-related-products-logo`, tạo từ `origin/main` commit
 - Assets: `assets/images/logo-mark.png`, `assets/css/style.css`.
 - JS: `assets/js/admin-categories.js` (mới), `product-card.js` (mới), `admin.js`, `home.js`, `products.js`, `product.js`, `supabase.js`.
 - Migration mới: `migrations/011_product_categories.sql`.
-- Tests: `tests/check.cjs`, `browser.cjs`, `categories.cjs` (mới), `categories-browser.cjs` (mới).
+- Backup: `assets/js/admin-backup.js` bổ sung `product_categories` vào JSON version 1, giữ toàn bộ bảng/format cũ. Admin có nút Danh mục CSV.
+- Tests: `tests/check.cjs`, `browser.cjs`, `categories.cjs` (mới), `categories-browser.cjs` (mới), `backup.cjs` (mới).
 - Tài liệu này. Không đổi logo ngang, Worker, checkout/lifecycle/auth migrations hoặc config/secrets.
 
 ## Database changes — chưa thực thi
 
-`011_product_categories.sql` tạo bảng category identity bigint, timestamps, name, unique slug, sort_order, is_active; thêm `product.category_id bigint` nullable không default/backfill. FK `ON DELETE SET NULL` giữ product khi xóa category. Có index, trigger cập nhật `updated_at` và RLS. Anon chỉ đọc active. Authenticated thường được đọc active nhưng không ghi; ghi yêu cầu `ddv_is_admin() IS TRUE` ở permissive policy và restrictive write guards. Không thay product_images, checkout hoặc lifecycle. Migration dành cho chạy một lần.
+`011_product_categories.sql` tạo bảng category identity bigint, timestamps, name, unique slug, sort_order, is_active; thêm `product.category_id bigint` nullable không default/backfill. FK `ON DELETE SET NULL` giữ product khi xóa category. Có index, trigger cập nhật `updated_at` và RLS. Anon chỉ đọc active. Authenticated thường được đọc active nhưng không ghi; ghi yêu cầu `ddv_is_admin() IS TRUE` ở permissive policy và restrictive write guards. Không thay product_images, checkout hoặc lifecycle. Khi chạy lại, pg_constraint guard dùng lại FK tương đương kể cả khác tên; FK sai định nghĩa hoặc trùng tên không tương đương làm transaction thất bại để chủ shop review. Trigger và các policy của migration được drop-if-exists rồi tạo lại trong cùng transaction; không có duplicate hoặc khoảng trống quyền giữa các transaction, không xóa/reset dữ liệu/identity/cột.
 
 ## Tests đã chạy
 
@@ -35,12 +36,13 @@ Tất cả dùng Node runtime và Edge headless có sẵn; backend giả lập. 
 5. `node tests/categories.cjs` — kiểm tra SQL tĩnh về nullable/FK SET NULL/RLS/additive; API giả lập kiểm tra category active/order/pagination, catalog visible/trash/limit/pagination, related ưu tiên/fallback/no-current/dedup/max4/không giả lập dữ liệu khi rỗng.
 6. `node tests/categories-browser.cjs` — Admin create/edit/toggle/confirm/delete, form save/load numeric hoặc null, giữ classification khi DB query lỗi; public category/search/kết hợp, inactive/NULL/hidden/trash, related priority/discount/card link, không tràn ngang 320/390/1280. Fake FK/role rejection chỉ kiểm tra UI error paths, không chứng minh PostgreSQL RLS thực tế.
 7. `git diff main --check` và `git diff origin/main --check` — qua; local main cũ không được chỉnh trực tiếp, base thực tế của branch là origin/main hiện tại.
+8. `node tests/backup.cjs` — JSON format/version/8 bảng cũ nguyên vẹn, có bảng product_categories gồm active/inactive; CSV mọi bảng và Danh mục CSV; query category lỗi thì không tải full backup thiếu dữ liệu, nút được mở lại. `tests/categories.cjs` bổ sung kiểm tra tĩnh guards FK/trigger/toàn bộ policy khi rerun, không chạy SQL.
 
 Kết quả: các kiểm tra trên qua. Screenshots `tests/categories-320.png`, `categories-390.png`, `categories-1280.png` được tạo để kiểm tra, không commit.
 
 ## Chủ shop thực hiện thủ công
 
-1. Sao lưu DB và kiểm tra schema staging có `product` cùng `ddv_is_admin()`/admin allowlist đang hoạt động. Đọc `011_product_categories.sql`; nếu bảng/cột/constraint category đã có từ nguồn khác, cần đối chiếu trước, không chạy mù hoặc chạy lặp.
+1. Sao lưu DB và kiểm tra schema staging có `product` cùng `ddv_is_admin()`/admin allowlist đang hoạt động. Đọc `011_product_categories.sql`; nếu bảng/cột/constraint category đã có từ nguồn khác, cần đối chiếu trước. Trên staging, chủ shop có thể thử chạy lại migration: số FK/trigger/policy và dữ liệu/identity phải giữ nguyên. Codex chỉ kiểm tra SQL tĩnh, chưa thực thi lần đầu hoặc rerun trên PostgreSQL.
 2. Trên staging, chạy migration sau khi duyệt. Xác nhận các product cũ giữ nguyên số lượng/nội dung và category_id null. Test FK thật: assign category vào product thử, xóa category, product giữ nguyên với category_id null.
 3. Test RLS thật với anon, người đăng nhập thường và Admin: anon chỉ đọc active; non-admin không INSERT/UPDATE/DELETE; Admin manage và đọc inactive được. Kiểm tra product policy vẫn chặn hidden/trash.
 4. Tạo danh mục thật từ Admin sau migration; không có danh mục mặc định được seed. Test thêm/sửa sản phẩm, category tùy chọn, discount/featured/stock/details, gallery 1/8 ảnh, upload/delete R2/reorder/save/reload và lifecycle/restore/checkout như hiện tại.
@@ -52,5 +54,5 @@ Kết quả: các kiểm tra trên qua. Screenshots `tests/categories-320.png`, 
 - Chưa chạy SQL hoặc xác minh RLS/FK/trigger trên PostgreSQL thật. `ON DELETE SET NULL` có thể bị product purge guard hiện có từ chối nếu category gắn với sản phẩm đang purge; trong trường hợp đó việc xóa category thất bại an toàn, không xóa product. Chờ purge hoàn tất rồi thử lại.
 - Chưa thực hiện thao tác Auth, đơn hàng, gallery, R2 hoặc category trên production. Tests dữ liệu giả chỉ nằm trong `tests/` và không được load bởi HTML public/Admin.
 - Category CRUD/API lỗi được báo hoặc fallback an toàn. Bảng/grid đọc phân trang không phải transactional snapshot nếu dữ liệu bị chỉnh đồng thời.
-- Export JSON hiện có vẫn là luồng cũ; muốn backup phục hồi phân loại cần sao lưu thêm bảng `product_categories` bằng Supabase, vì JSON export cũ không chứa bảng mới. Task này không thay đổi backup hoặc Worker.
+- Full JSON mới chứa cả `product_categories`, giữ format version 1. Nếu bảng category chưa có hoặc không đọc được, export báo lỗi và không tạo bản full backup thiếu bảng; các CSV bảng cũ vẫn hoạt động. JSON vẫn không gồm file ảnh R2 hoặc Auth users. Worker không đổi.
 - Asset logo đã được dùng nguyên file theo yêu cầu; không làm icon phiên bản crop/sửa khác.

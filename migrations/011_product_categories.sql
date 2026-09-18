@@ -11,13 +11,32 @@ create table if not exists public.product_categories (
   is_active boolean not null default true
 );
 alter table public.product add column if not exists category_id bigint;
-alter table public.product add constraint product_category_id_fkey
-  foreign key(category_id) references public.product_categories(id) on delete set null;
+-- Reuse an equivalent FK even if it was created under another name.
+-- Stop on incompatible existing definitions rather than changing/deleting data.
+do $$
+declare category_att smallint; target_att smallint;
+begin
+  select attnum into category_att from pg_attribute where attrelid='public.product'::regclass and attname='category_id' and not attisdropped;
+  select attnum into target_att from pg_attribute where attrelid='public.product_categories'::regclass and attname='id' and not attisdropped;
+  if exists(select 1 from pg_constraint where conrelid='public.product'::regclass and contype='f' and conkey=array[category_att]
+    and (confrelid<>'public.product_categories'::regclass or confkey<>array[target_att] or confdeltype<>'n')) then
+    raise exception 'Existing category FK has an incompatible definition; owner review required';
+  end if;
+  if not exists(select 1 from pg_constraint where conrelid='public.product'::regclass and contype='f' and conkey=array[category_att]
+    and confrelid='public.product_categories'::regclass and confkey=array[target_att] and confdeltype='n') then
+    if exists(select 1 from pg_constraint where conrelid='public.product'::regclass and conname='product_category_id_fkey') then
+      raise exception 'Constraint name product_category_id_fkey is already in use; owner review required';
+    end if;
+    alter table public.product add constraint product_category_id_fkey
+      foreign key(category_id) references public.product_categories(id) on delete set null;
+  end if;
+end $$;
 create index if not exists product_category_id_idx on public.product(category_id);
 create index if not exists product_categories_order_idx on public.product_categories(sort_order,id);
 create or replace function public.ddv_category_updated_at() returns trigger
 language plpgsql set search_path=public as $$
 begin new.updated_at=now();return new;end $$;
+drop trigger if exists ddv_category_updated_at on public.product_categories;
 create trigger ddv_category_updated_at before update on public.product_categories
 for each row execute function public.ddv_category_updated_at();
 alter table public.product_categories enable row level security;
@@ -25,15 +44,20 @@ revoke all on public.product_categories from anon,authenticated;
 grant select on public.product_categories to anon,authenticated;
 grant insert,update,delete on public.product_categories to authenticated;
 grant usage,select on sequence public.product_categories_id_seq to authenticated;
+drop policy if exists "ddv read active categories" on public.product_categories;
 create policy "ddv read active categories" on public.product_categories
   for select to anon,authenticated using(is_active=true);
+drop policy if exists "ddv admin manage categories" on public.product_categories;
 create policy "ddv admin manage categories" on public.product_categories
   for all to authenticated using(public.ddv_is_admin() is true) with check(public.ddv_is_admin() is true);
 -- Fail closed for writes even if permissive policies are added later.
+drop policy if exists "ddv category insert guard" on public.product_categories;
 create policy "ddv category insert guard" on public.product_categories as restrictive
   for insert to authenticated with check(public.ddv_is_admin() is true);
+drop policy if exists "ddv category update guard" on public.product_categories;
 create policy "ddv category update guard" on public.product_categories as restrictive
   for update to authenticated using(public.ddv_is_admin() is true) with check(public.ddv_is_admin() is true);
+drop policy if exists "ddv category delete guard" on public.product_categories;
 create policy "ddv category delete guard" on public.product_categories as restrictive
   for delete to authenticated using(public.ddv_is_admin() is true);
 commit;
