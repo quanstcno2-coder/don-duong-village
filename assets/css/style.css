@@ -1375,3 +1375,43 @@ table{min-width:680px}
 @media(max-width:390px){
   .site-footer>.container{width:calc(100% - 22px)}
 }
+
+
+/* Mobile product cards: keep desktop-style detail action visible and center Buy now. */
+.product-card{cursor:pointer}
+.product-info h3 a{color:inherit;text-decoration:none}
+.card-buy-now{display:none}
+@media(max-width:760px){
+  .product-info .actions{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:7px;
+    margin-top:12px;
+  }
+  .product-info .actions .btn{
+    min-height:39px;
+    margin:0;
+    padding:0 9px;
+    font-size:11px;
+    white-space:nowrap;
+  }
+  .product-info .actions .card-detail{
+    display:inline-flex;
+    width:100%;
+  }
+  .product-info .actions .card-add{
+    display:inline-flex;
+    width:100%;
+  }
+  .product-info .actions .card-buy-now{
+    display:inline-flex;
+    width:72%;
+    align-self:center;
+  }
+}
+@media(max-width:390px){
+  .product-info .actions{gap:6px}
+  .product-info .actions .btn{font-size:10.5px;padding:0 6px}
+  .product-info .actions .card-buy-now{width:78%}
+}
