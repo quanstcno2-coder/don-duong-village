@@ -66,8 +66,9 @@ const stub=`window.supabase={createClient:()=>({auth:{getSession:()=>new Promise
    for(const value of ['visible','hidden','trash']){filter.value=value;await loadProductsAdmin();filters[value]=[...body.rows].map(row=>row.cells[1].textContent);}
    return {headers,rows,filters};
  });
- assert.deepEqual(listResult.headers,['Ảnh','Tên','Giá','Tồn','Nổi bật','Trạng thái','Thao tác']);
- assert.ok(listResult.rows.every(row=>row.cells.length===7));
+ assert.deepEqual(listResult.headers,['Ảnh','Tên','Giá','Tồn','Nổi bật','Trạng thái','Danh mục','Thao tác']);
+ assert.ok(listResult.rows.every(row=>row.cells.length===8));
+ assert.ok(listResult.rows.every(row=>row.cells[6]==='Không phân loại'));
  assert.equal(listResult.rows[0].image,'../assets/images/story-main.png');assert.equal(listResult.rows[0].alt,'Visible featured');
  assert.equal(listResult.rows[0].cells[4],'Nổi bật');assert.equal(listResult.rows[0].cells[5],'Hiển thị');
  assert.equal(listResult.rows[1].image,null);assert.equal(listResult.rows[1].cells[0],'—');assert.equal(listResult.rows[1].cells[4],'—');assert.equal(listResult.rows[1].cells[5],'Đang ẩn');
