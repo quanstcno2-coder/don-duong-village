@@ -53,11 +53,11 @@ const mainImage = imageUrls[0] || "";
    <div>
      <div class="eyebrow">DON DUONG VILLAGE</div>
      <h1 class="detail-title">${safe(p.name)}</h1>
-     <div class="detail-price">${money(p.price)}</div>
+     <div class="detail-price">${priceMarkup(p)}</div>
      <div class="stock-ok">${Number(p.stock||0)>0?`Còn hàng · ${p.stock} sản phẩm`:"Tạm hết hàng"}</div>
      <p>${safe(p.description||"Thông tin sản phẩm đang được cập nhật.")}</p>
      <div class="qty"><button id="minus">−</button><span id="qv">1</span><button id="plus">+</button></div>
-     <div><button id="addBtn" class="btn primary">Thêm vào giỏ hàng →</button></div>
+     <div class="actions"><button id="addBtn" class="btn primary">Thêm vào giỏ hàng →</button><button id="buyNowBtn" class="btn secondary">Mua ngay</button></div>
    </div>`;
   const mainImg = $("#productMainImage");
 const thumbButtons = [...document.querySelectorAll(".product-thumb")];
@@ -77,6 +77,7 @@ thumbButtons.forEach(btn => {
     btn.classList.add("active");
   };
 });
+  setupProductGallery(imageUrls,p.name);
   const detailsEl = $("#productDetails");
 const infoSection = $("#productInfoSection");
 
@@ -93,11 +94,15 @@ if(detailsEl && infoSection){
   let q=1;$("#minus").onclick=()=>{$("#qv").textContent=q=Math.max(1,q-1)};$("#plus").onclick=()=>{$("#qv").textContent=++q};
   const add=()=>addToCart(p,q);
   $("#addBtn").onclick=add;
+  let buying=false;
+  const buy=()=>{if(buying)return;buying=true;addToCart(p,q);location.href="cart.html#checkoutForm";};
+  $("#buyNowBtn").onclick=buy;
 
   const mobileBar=document.createElement("div");
   mobileBar.className="mobile-product-bar";
-  mobileBar.innerHTML=`<div class="mobile-product-price">${money(p.price)}</div><button class="btn primary">Thêm vào giỏ hàng</button>`;
+  mobileBar.innerHTML=`<div class="mobile-product-price">${priceMarkup(p)}</div><button class="btn primary">Thêm vào giỏ hàng</button><button class="btn secondary" data-buy>Mua ngay</button>`;
   mobileBar.querySelector("button").onclick=add;
+  mobileBar.querySelector("[data-buy]").onclick=buy;
   document.body.appendChild(mobileBar);
   document.body.classList.add("has-mobile-product-bar");
 });

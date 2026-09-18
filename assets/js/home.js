@@ -2,6 +2,9 @@
 document.addEventListener("DOMContentLoaded",async()=>{
   const sec=await ddvApi.sections();
 
+  $("#featuredSubtitle").textContent=sec.featured_intro?.title??DDV_DEMO.sections.featured_intro.title;
+  $("#storyEyebrow").textContent=sec.story_labels?.title??DDV_DEMO.sections.story_labels.title;
+  $("#storyImageLine").textContent=sec.story_labels?.body??DDV_DEMO.sections.story_labels.body;
   const hero=sec.hero||{};
   const heroEl=$("#hero");
   if(heroEl){
@@ -76,7 +79,7 @@ function productCard(p){
     </a>
     <div class="product-info">
       <h3>${safe(p.name)}</h3>
-      <div class="price">${money(p.price)}</div>
+      <div class="price">${priceMarkup(p)}</div>
       <div class="actions">
         <a class="btn secondary small" href="product.html?id=${p.id}">Xem chi tiết</a>
         <button class="btn primary small">+ Giỏ hàng</button>

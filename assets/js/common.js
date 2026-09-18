@@ -15,7 +15,7 @@ function updateCartCount(){const el=$("#cartCount"); if(el) el.textContent=cartG
 function addToCart(product,qty=1){
   const c=cartGet(), id=String(product.id);
   const found=c.find(x=>String(x.id)===id);
-  if(found) found.qty+=qty; else c.push({id:product.id,name:product.name,price:Number(product.price||0),image_url:product.image_url||"",qty});
+  if(found){found.qty=Number(found.qty)+Number(qty);found.price=effectivePrice(product);} else c.push({id:product.id,name:product.name,price:effectivePrice(product),image_url:product.image_url||"",qty});
   cartSave(c); toast("Đã thêm vào giỏ hàng");
 }
 function toast(msg){

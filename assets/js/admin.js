@@ -1,7 +1,9 @@
 
 let adminState={session:null,tab:"dashboard",editProduct:null,editPost:null,editAbout:null};
-const sectionKeys=["hero","side_banner","brand_story","bottom_banner"];
+const sectionKeys=["hero","side_banner","brand_story","bottom_banner","featured_intro","story_labels"];
 const sectionLabels={
+  featured_intro:"Trang chủ · Tiêu đề sản phẩm nổi bật",
+  story_labels:"Trang chủ · Nhãn câu chuyện & dòng trên ảnh",
   hero:"Trang chủ · Hero Banner",
   side_banner:"Trang chủ · Banner cạnh sản phẩm",
   brand_story:"Trang chủ · Câu chuyện thương hiệu",
@@ -17,21 +19,40 @@ document.addEventListener("DOMContentLoaded",async()=>{
   }
   const {data:{session}}=await ddvSupabase.auth.getSession();
   if(session){adminState.session=session;openAdmin()} else openLogin();
-  $("#loginForm")?.addEventListener("submit",login);
+  ddvSupabase.auth.onAuthStateChange((event,session)=>{adminState.session=session;if(!session)openLogin();});
 });
 function openLogin(){$("#loginView").classList.remove("hidden");$("#adminView").classList.add("hidden")}
-function openAdmin(){$("#loginView").classList.add("hidden");$("#adminView").classList.remove("hidden");showTab("dashboard")}
-async function login(e){
-  e.preventDefault(); const fd=new FormData(e.target);
-  const {data,error}=await ddvSupabase.auth.signInWithPassword({email:fd.get("email"),password:fd.get("password")});
-  if(error){toast("Đăng nhập chưa thành công");return} adminState.session=data.session;openAdmin();
+async function openAdmin(){
+  try{
+    const {data,error}=await ddvSupabase.rpc('ddv_is_admin');
+    if(error||data!==true){openLogin();toast('Tài khoản chưa được cấp quyền Admin. Vui lòng kiểm tra cấu hình quyền.');return;}
+    $("#loginView").classList.add("hidden");$("#adminView").classList.remove("hidden");showTab("dashboard");
+  }catch{openLogin();toast('Chưa xác minh được quyền Admin. Vui lòng thử lại.');}
 }
-async function logout(){if(ddvSupabase)await ddvSupabase.auth.signOut();location.reload()}
+async function login(e){
+  e.preventDefault();
+  const f=e.target,button=f.querySelector('button');
+  if(button.disabled)return;
+  if(!ddvSupabase){toast('Chưa kết nối hệ thống đăng nhập');return;}
+  button.disabled=true;
+  try{
+    const {data,error}=await ddvSupabase.auth.signInWithPassword({email:f.elements.email.value.trim(),password:f.elements.password.value});
+    f.elements.password.value='';
+    if(error){toast('Email hoặc mật khẩu chưa đúng');return;}
+    adminState.session=data.session;openAdmin();
+  }catch{f.elements.password.value='';toast('Không kết nối được hệ thống đăng nhập. Vui lòng thử lại.');}
+  finally{button.disabled=false;}
+}
+async function logout(){
+  if(ddvSupabase){const {error}=await ddvSupabase.auth.signOut();if(error){toast('Chưa đăng xuất được. Vui lòng thử lại.');return;}}
+  adminState.session=null;location.reload();
+}
 function showTab(tab){
   adminState.tab=tab; $$(".admin-menu button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
   $$(".admin-section").forEach(x=>x.classList.add("hidden")); $("#tab-"+tab)?.classList.remove("hidden");
-  const title={dashboard:"Tổng quan",products:"Sản phẩm",orders:"Đơn hàng",posts:"Bài viết",pages:"Trang website",about:"Về chúng tôi",settings:"Cài đặt"}[tab]||"Admin";
+  const title={system:"Hệ thống & lưu trữ",dashboard:"Tổng quan",products:"Sản phẩm",orders:"Đơn hàng",posts:"Bài viết",pages:"Trang website",about:"Về chúng tôi",settings:"Cài đặt"}[tab]||"Admin";
   $("#adminTitle").textContent=title;
+  if(tab==="system")loadSystem();
   if(tab==="dashboard")loadDashboard();
   if(tab==="products")loadProductsAdmin();
   if(tab==="orders")loadOrders();
@@ -50,11 +71,39 @@ async function loadDashboard(){
   $("#stats").innerHTML=`<div class="stat"><span>Sản phẩm</span><strong>${p||0}</strong></div><div class="stat"><span>Đơn hàng</span><strong>${o||0}</strong></div><div class="stat"><span>Bài viết</span><strong>${b||0}</strong></div><div class="stat"><span>Hệ thống</span><strong>OK</strong></div>`;
 }
 async function loadProductsAdmin(){
- const body=$("#productsTable"); if(!body)return;
- if(!ddvSupabase){body.innerHTML=`<tr><td colspan="6">Chế độ demo — kết nối Supabase để quản lý dữ liệu thật.</td></tr>`;return}
- const {data,error}=await ddvSupabase.from("product").select("*").order("created_at",{ascending:false});
- if(error){console.error(error);return}
- body.innerHTML=(data||[]).map(p=>`<tr><td>${p.image_url?`<img src="${p.image_url}" style="width:54px;height:54px;object-fit:cover;border-radius:8px">`:"—"}</td><td>${safe(p.name)}</td><td>${money(p.price)}</td><td>${p.stock??0}</td><td>${p.is_featured?"Nổi bật":"—"}</td><td><button class="btn secondary small" onclick='openProduct(${JSON.stringify(p)})'>Sửa</button> <button class="btn danger small" onclick="deleteProduct(${p.id})">Xóa</button></td></tr>`).join("");
+ const body=$("#productsTable");if(!body)return;
+ if(!ddvSupabase){body.innerHTML='<tr><td colspan="7">Chế độ demo</td></tr>';return;}
+ const {data,error}=await ddvSupabase.from('product').select('*').order('created_at',{ascending:false});
+ if(error){toast('Không tải được sản phẩm');return;}
+ const filter=$('#productStatusFilter').value;
+ body.replaceChildren();
+ for(const p of data||[]){
+   const status=p.deleted_at?'trash':p.visibility||'visible';
+   if(filter!=='all'&&filter!==status)continue;
+   const row=document.createElement('tr');
+   const thumbnail=document.createElement('td');
+   if(p.image_url){
+     const image=document.createElement('img');image.src=resolvePath(p.image_url);image.alt=p.name||'Ảnh sản phẩm';image.loading='lazy';
+     Object.assign(image.style,{width:'54px',height:'54px',objectFit:'cover',borderRadius:'8px'});thumbnail.append(image);
+   }else thumbnail.textContent='—';
+   row.append(thumbnail);
+   for(const text of [p.name,money(effectivePrice(p)),p.stock??0,p.is_featured?'Nổi bật':'—',status==='trash'?'Thùng rác':status==='hidden'?'Đang ẩn':'Hiển thị']){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}
+   const actions=document.createElement('td');
+   const button=(label,fn)=>{const b=document.createElement('button');b.type='button';b.className='btn secondary small';b.textContent=label;b.onclick=fn;actions.append(b,' ');};
+   if(status==='trash'){
+     const remaining=Math.max(0,Math.ceil((new Date(p.deleted_at).getTime()+14*86400000-Date.now())/86400000));
+     if(remaining&&!p.purge_started_at)button('Khôi phục ('+remaining+' ngày)',()=>changeProductState(p.id,'restore'));
+     else actions.append(document.createTextNode('Hết hạn khôi phục'));
+   }else{
+     button('Sửa',()=>openProduct(p));button(status==='hidden'?'Hiển thị':'Ẩn',()=>changeProductState(p.id,status==='hidden'?'show':'hide'));button('Chuyển vào thùng rác',()=>deleteProduct(p.id));
+   }
+   row.append(actions);body.append(row);
+ }
+}
+async function changeProductState(id,action){
+ const {error}=await ddvSupabase.rpc('product_lifecycle',{p_id:id,p_action:action});
+ if(error){toast('Chưa đổi được trạng thái. Kiểm tra migration và quyền truy cập.');return;}
+ toast('Đã cập nhật trạng thái');loadProductsAdmin();
 }
 async function loadProductImagesForAdmin(productId){
   if(!ddvSupabase || !productId) return [];
@@ -137,6 +186,22 @@ function renderProductImagesAdmin(images=[]){
   });
 
   preview.innerHTML = html;
+  const key=card=>card.dataset.imageId?'old:'+card.dataset.imageId:'new:'+adminState.pendingProductFiles[Number(card.dataset.newIndex)]?.previewUrl;
+  const order=adminState.productImageOrder||[];
+  [...preview.children].sort((a,b)=>{
+    const ai=order.indexOf(key(a)),bi=order.indexOf(key(b));
+    return (ai<0?Infinity:ai)-(bi<0?Infinity:bi);
+  }).forEach(card=>preview.append(card));
+  for(const card of preview.querySelectorAll('.product-image-card')){
+    const controls=document.createElement('div');controls.className='image-order-controls';
+    for(const [label,direction] of [['←',-1],['→',1]]){
+      const button=document.createElement('button');button.type='button';button.textContent=label;button.setAttribute('aria-label',direction<0?'Đưa ảnh lên trước':'Đưa ảnh ra sau');
+      button.onclick=()=>{const sibling=direction<0?card.previousElementSibling:card.nextElementSibling;if(sibling){if(direction<0)preview.insertBefore(card,sibling);else preview.insertBefore(sibling,card);refreshProductImageOrderUI();}};
+      controls.append(button);
+    }
+    card.append(controls);
+  }
+  refreshProductImageOrderUI();
 }
 
 document.addEventListener("change", (e) => {
@@ -218,6 +283,7 @@ function refreshProductImageOrderUI(){
   if(!preview) return;
 
   const cards = [...preview.querySelectorAll(".product-image-card")];
+  adminState.productImageOrder=cards.map(card=>card.dataset.imageId?'old:'+card.dataset.imageId:'new:'+adminState.pendingProductFiles[Number(card.dataset.newIndex)]?.previewUrl);
 
   cards.forEach((card, index) => {
     card.dataset.galleryIndex = index;
@@ -318,12 +384,14 @@ async function openProduct(p=null){
 
   const f = $("#productForm");
   f.reset();
+  adminState.productImageOrder=[];
 adminState.pendingProductFiles = [];
 adminState.deletedProductImages = []; 
   if(p){
     f.id.value = p.id;
     f.name.value = p.name || "";
     f.price.value = p.price || 0;
+    f.elements.discount_percent.value=p.discount_percent||0;
     f.stock.value = p.stock || 0;
     f.description.value = p.description || "";
     f.product_details.value = p.product_details || "";
@@ -340,6 +408,7 @@ adminState.deletedProductImages = [];
     adminState.productImages = [];
     renderProductImagesAdmin([]);
   }
+  updateSalePreview();
 }
 function closeModal(id){$("#"+id).classList.add("hidden")}
 async function uploadFile(file,bucket,path){
@@ -521,12 +590,17 @@ const deletedImages = adminState.deletedProductImages || [];
     return;
   }
 
+  if(!f.reportValidity())return;
+  const saveButton=f.querySelector('button:not([type]),button[type="submit"]');
+  if(saveButton?.disabled)return;
+  if(saveButton)saveButton.disabled=true;
   try{
     let productId = id;
 
     const payload = {
       name: f.name.value.trim(),
       price: Number(f.price.value || 0),
+      discount_percent: Number(f.elements.discount_percent.value || 0),
       stock: Number(f.stock.value || 0),
       description: f.description.value.trim(),
       product_details: f.product_details.value.trim(),
@@ -732,9 +806,11 @@ for(const image of deletedImages){
   }catch(err){
     console.error(err);
     toast(err.message || "Chưa lưu được sản phẩm");
+  }finally{
+    if(saveButton)saveButton.disabled=false;
   }
 }
-async function deleteProduct(id){if(!confirm("Xóa sản phẩm này?")||!ddvSupabase)return;const {error}=await ddvSupabase.from("product").delete().eq("id",id);if(error)toast("Không xóa được");else{toast("Đã xóa");loadProductsAdmin()}}
+async function deleteProduct(id){if(!ddvSupabase||!confirm('Chuyển sản phẩm vào thùng rác? Có thể khôi phục trong 14 ngày.'))return;await changeProductState(id,'trash');}
 async function loadOrders(){
  const body=$("#ordersTable"); if(!ddvSupabase){body.innerHTML=`<tr><td colspan="7">Chế độ demo.</td></tr>`;return}
  const {data}=await ddvSupabase.from("web_orders").select("*").order("created_at",{ascending:false}).limit(100);

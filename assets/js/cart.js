@@ -1,5 +1,6 @@
 
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener("DOMContentLoaded",async()=>{
+  await refreshCartPrices();
   renderCart();
   $("#checkoutForm")?.addEventListener("submit",submitOrder);
 });
@@ -19,18 +20,30 @@ function renderCart(){
   const total=cart.reduce((s,x)=>s+x.price*x.qty,0);
   if(summary) summary.innerHTML=`<div class="total-row"><span>Tạm tính</span><b>${money(total)}</b></div><div class="total-row grand"><span>Tổng cộng</span><span>${money(total)}</span></div>`;
 }
+async function refreshCartPrices(){
+  if(!window.ddvSupabase)return true;
+  const cart=cartGet();
+  for(const item of cart){
+    const p=await ddvApi.product(item.id);
+    if(!p){toast("Có sản phẩm không còn bán. Vui lòng xóa khỏi giỏ hàng.");return false;}
+    item.price=effectivePrice(p);item.name=p.name;
+  }
+  cartSave(cart);return true;
+}
 async function submitOrder(e){
-  e.preventDefault(); const cart=cartGet(); if(!cart.length){toast("Giỏ hàng đang trống");return}
-  const fd=new FormData(e.target), customer=Object.fromEntries(fd.entries());
-  const total=cart.reduce((s,x)=>s+x.price*x.qty,0);
-  if(!window.ddvSupabase){toast("Bản demo: cần kết nối Supabase để lưu đơn hàng");return}
-  const {data:order,error}=await ddvSupabase.from("web_orders").insert({
-    customer_name:customer.customer_name, phone:customer.phone, email:customer.email||null,
-    address:customer.address, note:customer.note||null, subtotal:total,total:total,status:"new",payment_status:"unpaid"
-  }).select().single();
-  if(error){toast("Chưa lưu được đơn hàng");console.error(error);return}
-  const rows=cart.map(x=>({order_id:order.id,product_id:x.id,product_name:x.name,quantity:x.qty,unit_price:x.price,line_total:x.qty*x.price}));
-  const {error:itemErr}=await ddvSupabase.from("web_order_items").insert(rows);
-  if(itemErr){toast("Đơn đã tạo nhưng có lỗi chi tiết");console.error(itemErr);return}
-  cartSave([]);e.target.reset();renderCart();toast("Đặt hàng thành công");
+  e.preventDefault();
+  const button=e.target.querySelector('button[type="submit"],button:not([type])');
+  if(button?.disabled)return;
+  if(button)button.disabled=true;
+  try{
+    if(!window.ddvSupabase){toast('Bản demo: cần kết nối Supabase để lưu đơn hàng');return;}
+    if(!await refreshCartPrices())return;
+    renderCart();
+    const cart=cartGet();if(!cart.length){toast('Giỏ hàng đang trống');return;}
+    const customer=Object.fromEntries(new FormData(e.target).entries());
+    const {error}=await ddvSupabase.rpc('ddv_checkout',{p_customer:customer,p_items:cart.map(x=>({id:x.id,qty:x.qty}))});
+    if(error){toast('Chưa đặt được hàng. Kiểm tra thông tin, tồn kho và kết nối hệ thống.');return;}
+    cartSave([]);e.target.reset();renderCart();toast('Đặt hàng thành công');
+  }catch{toast('Kết nối bị gián đoạn. Hãy kiểm tra đơn với cửa hàng trước khi gửi lại.');}
+  finally{if(button)button.disabled=false;}
 }
