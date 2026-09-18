@@ -20,7 +20,7 @@ async function exportData(table,button){
     const date=new Date().toISOString().slice(0,10);
     if(table==='backup'){
       const tables={};
-      for(const name of ['product','product_images','web_orders','web_order_items','posts','page_sections','site_settings','about_blocks'])tables[name]=await readAllRows(name);
+      for(const name of ['product','product_images','web_orders','web_order_items','posts','page_sections','site_settings','about_blocks','product_categories'])tables[name]=await readAllRows(name);
       downloadBackup('ddv-backup-'+date+'.json',JSON.stringify({format:'ddv-backup',version:1,created_at:new Date().toISOString(),tables},null,2),'application/json');
     }else downloadBackup('ddv-'+table+'-'+date+'.csv',rowsToCsv(await readAllRows(table)),'text/csv;charset=utf-8');
     toast('Đã xuất dữ liệu. Hãy cất bản sao lưu ở nơi riêng tư.');
