@@ -11,9 +11,10 @@ function productCard(p){
   const name=document.createElement('h3');name.textContent=p.name||'';
   const price=document.createElement('div');price.className='price';price.innerHTML=priceMarkup(p);
   const actions=document.createElement('div');actions.className='actions';
-  const detail=document.createElement('a');detail.href=href;detail.className='btn secondary small';detail.textContent='Xem chi tiết';
-  const add=document.createElement('button');add.type='button';add.className='btn primary small';add.textContent='+ Giỏ hàng';add.onclick=()=>addToCart(p,1);
-  actions.append(detail,add);info.append(name,price,actions);card.append(info);return card;
+  const detail=document.createElement('a');detail.href=href;detail.className='btn secondary small card-detail';detail.textContent='Xem chi tiết';
+  const add=document.createElement('button');add.type='button';add.className='btn primary small card-add';add.textContent='+ Giỏ hàng';add.onclick=()=>addToCart(p,1);
+  const buy=document.createElement('button');buy.type='button';buy.className='btn gold small card-buy-now';buy.textContent='Mua ngay';buy.onclick=()=>{addToCart(p,1);location.href='cart.html#checkoutForm';};
+  actions.append(detail,add,buy);info.append(name,price,actions);card.append(info);return card;
 }
 function isPublicProduct(p){return p.visibility==='visible'&&!p.deleted_at;}
 async function renderRelatedProducts(current){
