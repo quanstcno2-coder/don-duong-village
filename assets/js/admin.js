@@ -50,11 +50,12 @@ async function logout(){
 function showTab(tab){
   adminState.tab=tab; $$(".admin-menu button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
   $$(".admin-section").forEach(x=>x.classList.add("hidden")); $("#tab-"+tab)?.classList.remove("hidden");
-  const title={system:"Hệ thống & lưu trữ",dashboard:"Tổng quan",products:"Sản phẩm",orders:"Đơn hàng",posts:"Bài viết",pages:"Trang website",about:"Về chúng tôi",settings:"Cài đặt"}[tab]||"Admin";
+  const title={categories:"Danh mục sản phẩm",system:"Hệ thống & lưu trữ",dashboard:"Tổng quan",products:"Sản phẩm",orders:"Đơn hàng",posts:"Bài viết",pages:"Trang website",about:"Về chúng tôi",settings:"Cài đặt"}[tab]||"Admin";
   $("#adminTitle").textContent=title;
   if(tab==="system")loadSystem();
   if(tab==="dashboard")loadDashboard();
   if(tab==="products")loadProductsAdmin();
+  if(tab==="categories")loadCategoriesAdmin();
   if(tab==="orders")loadOrders();
   if(tab==="posts")loadPostsAdmin();
   if(tab==="pages")loadPageSections();
@@ -72,9 +73,11 @@ async function loadDashboard(){
 }
 async function loadProductsAdmin(){
  const body=$("#productsTable");if(!body)return;
- if(!ddvSupabase){body.innerHTML='<tr><td colspan="7">Chế độ demo</td></tr>';return;}
+ if(!ddvSupabase){body.innerHTML='<tr><td colspan="8">Chế độ demo</td></tr>';return;}
  const {data,error}=await ddvSupabase.from('product').select('*').order('created_at',{ascending:false});
  if(error){toast('Không tải được sản phẩm');return;}
+ let categoryNames=new Map();
+ try{const categories=await fetchAdminCategories();categoryNames=new Map(categories.map(c=>[String(c.id),c.name]));}catch{ /* Preserve product management if migration is not installed yet. */ }
  const filter=$('#productStatusFilter').value;
  body.replaceChildren();
  for(const p of data||[]){
@@ -87,7 +90,8 @@ async function loadProductsAdmin(){
      Object.assign(image.style,{width:'54px',height:'54px',objectFit:'cover',borderRadius:'8px'});thumbnail.append(image);
    }else thumbnail.textContent='—';
    row.append(thumbnail);
-   for(const text of [p.name,money(effectivePrice(p)),p.stock??0,p.is_featured?'Nổi bật':'—',status==='trash'?'Thùng rác':status==='hidden'?'Đang ẩn':'Hiển thị']){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}
+   const category=p.category_id==null?'Không phân loại':categoryNames.get(String(p.category_id))||'Danh mục chưa tải';
+   for(const text of [p.name,money(effectivePrice(p)),p.stock??0,p.is_featured?'Nổi bật':'—',status==='trash'?'Thùng rác':status==='hidden'?'Đang ẩn':'Hiển thị',category]){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}
    const actions=document.createElement('td');
    const button=(label,fn)=>{const b=document.createElement('button');b.type='button';b.className='btn secondary small';b.textContent=label;b.onclick=fn;actions.append(b,' ');};
    if(status==='trash'){
@@ -384,6 +388,10 @@ async function openProduct(p=null){
 
   const f = $("#productForm");
   f.reset();
+  // Do not let a Save during asynchronous image/category loading clear the
+  // existing classification. populateProductCategorySelect enables it later.
+  f.elements.category_id.disabled=true;
+  $("#productCategoryStatus").textContent='Đang tải danh mục…';
   adminState.productImageOrder=[];
 adminState.pendingProductFiles = [];
 adminState.deletedProductImages = []; 
@@ -398,6 +406,7 @@ adminState.deletedProductImages = [];
     f.is_featured.checked = !!p.is_featured;
 
     const images = await loadProductImagesForAdmin(p.id);
+    if(adminState.editProduct!==p)return;
 
     adminState.productImages = images;
     renderProductImagesAdmin(images);
@@ -409,6 +418,8 @@ adminState.deletedProductImages = [];
     renderProductImagesAdmin([]);
   }
   updateSalePreview();
+  if(adminState.editProduct!==p)return;
+  await populateProductCategorySelect(p?.category_id,p);
 }
 function closeModal(id){$("#"+id).classList.add("hidden")}
 async function uploadFile(file,bucket,path){
@@ -606,6 +617,8 @@ const deletedImages = adminState.deletedProductImages || [];
       product_details: f.product_details.value.trim(),
       is_featured: f.is_featured.checked
     };
+    // If categories are unavailable, omit the field and preserve existing data.
+    if(!f.elements.category_id.disabled)payload.category_id=f.elements.category_id.value?Number(f.elements.category_id.value):null;
 
     // 1. Lưu thông tin sản phẩm
     if(productId){

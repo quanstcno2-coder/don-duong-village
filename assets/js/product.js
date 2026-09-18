@@ -105,4 +105,5 @@ if(detailsEl && infoSection){
   mobileBar.querySelector("[data-buy]").onclick=buy;
   document.body.appendChild(mobileBar);
   document.body.classList.add("has-mobile-product-bar");
+  renderRelatedProducts(p);
 });

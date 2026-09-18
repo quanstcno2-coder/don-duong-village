@@ -1345,3 +1345,16 @@ table{min-width:680px}
 
 @media(max-width:760px){.mobile-product-bar{gap:6px}.mobile-product-bar .btn{font-size:12px;padding:0 8px}.mobile-product-price{font-size:14px!important;flex:1}.mobile-product-price strong{display:block}}
 .image-order-controls{display:flex;gap:5px;padding:5px}.image-order-controls button{min-width:38px;min-height:36px;border:1px solid var(--line);background:var(--cream);border-radius:6px;color:var(--forest);cursor:pointer}
+
+/* Product categories: sidebar desktop, wrapping buttons on mobile. */
+.catalog-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:26px;align-items:start}
+.catalog-categories{background:white;border:1px solid var(--line);padding:18px;border-radius:16px;min-width:0}
+.catalog-categories h2{font-family:inherit;font-size:14px;line-height:1.5;letter-spacing:.04em;margin:0 0 14px}
+.category-filters{display:flex;flex-direction:column;gap:8px}
+.category-filter{font:inherit;min-height:44px;background:var(--cream);border:1px solid var(--line);border-radius:8px;padding:10px 12px;text-align:left;white-space:normal;overflow-wrap:anywhere;cursor:pointer;color:var(--forest)}
+.category-filter.active{background:var(--forest);color:white;border-color:var(--forest)}
+.category-filter:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.catalog-grid .product-card,.related-grid .product-card{min-width:0}
+.catalog-grid h3,.related-grid h3{overflow-wrap:anywhere}.related-grid{margin-top:22px;grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:1000px){.catalog-layout{grid-template-columns:190px minmax(0,1fr);gap:18px}.catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.catalog-layout{grid-template-columns:minmax(0,1fr);gap:18px}.catalog-categories{padding:12px}.category-filters{flex-direction:row;flex-wrap:wrap}.category-filter{max-width:100%;flex:0 1 auto;font-size:13px}.related-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

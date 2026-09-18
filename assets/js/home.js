@@ -68,24 +68,3 @@ document.addEventListener("DOMContentLoaded",async()=>{
     }
   }
 });
-
-function productCard(p){
-  const a=document.createElement("article");
-  a.className="product-card";
-  const img=p.image_url?`<img src="${safe(p.image_url)}" alt="${safe(p.name)}">`:`<div class="product-placeholder">Chưa có ảnh</div>`;
-  a.innerHTML=`
-    <a href="product.html?id=${p.id}">
-      <div class="product-image">${img}</div>
-    </a>
-    <div class="product-info">
-      <h3>${safe(p.name)}</h3>
-      <div class="price">${priceMarkup(p)}</div>
-      <div class="actions">
-        <a class="btn secondary small" href="product.html?id=${p.id}">Xem chi tiết</a>
-        <button class="btn primary small">+ Giỏ hàng</button>
-      </div>
-    </div>
-  `;
-  a.querySelector("button").onclick=()=>addToCart(p,1);
-  return a;
-}

@@ -1,20 +1,24 @@
-
-let allProducts=[];
-document.addEventListener("DOMContentLoaded",async()=>{
-  allProducts=await ddvApi.products();
-  render(allProducts);
-  $("#productSearch")?.addEventListener("input",e=>{
-    const q=e.target.value.toLowerCase().trim();
-    render(allProducts.filter(p=>(p.name||"").toLowerCase().includes(q)||(p.description||"").toLowerCase().includes(q)));
-  });
+let allProducts=[],selectedCategory='';
+document.addEventListener('DOMContentLoaded',async()=>{
+  const [products,categories]=await Promise.all([ddvApi.products(),ddvApi.categories()]);
+  allProducts=products.filter(isPublicProduct);
+  const menu=$('#categoryFilters');menu.replaceChildren();
+  const button=(label,id)=>{
+    const b=document.createElement('button');b.type='button';b.textContent=label;b.dataset.category=id;b.className='category-filter';
+    b.onclick=()=>{selectedCategory=id;applyProductFilters();};menu.append(b);
+  };
+  button('Tất cả sản phẩm','');
+  categories.filter(c=>c.is_active).forEach(c=>button(c.name,String(c.id)));
+  $('#productSearch')?.addEventListener('input',applyProductFilters);applyProductFilters();
 });
+function applyProductFilters(){
+  const q=($('#productSearch')?.value||'').toLocaleLowerCase('vi-VN').trim();
+  const items=allProducts.filter(p=>(!selectedCategory||String(p.category_id)===selectedCategory)&&((p.name||'').toLocaleLowerCase('vi-VN').includes(q)||(p.description||'').toLocaleLowerCase('vi-VN').includes(q)));
+  $$('.category-filter').forEach(b=>{const active=b.dataset.category===selectedCategory;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
+  render(items);
+}
 function render(items){
-  const grid=$("#productGrid"); if(!grid) return; grid.innerHTML="";
-  if(!items.length){grid.innerHTML=`<p class="muted">Chưa có sản phẩm. Hãy thêm sản phẩm trong Admin.</p>`;return}
-  items.forEach(p=>{
-    const card=document.createElement("article");card.className="product-card";
-    card.innerHTML=`<a href="product.html?id=${p.id}"><div class="product-image">${p.image_url?`<img src="${safe(p.image_url)}" alt="${safe(p.name)}">`:`<div class="product-placeholder">Chưa có ảnh</div>`}</div></a>
-    <div class="product-info"><h3>${safe(p.name)}</h3><div class="price">${priceMarkup(p)}</div><div class="actions"><a class="btn secondary small" href="product.html?id=${p.id}">Chi tiết</a><button class="btn primary small">+ Giỏ hàng</button></div></div>`;
-    card.querySelector("button").onclick=()=>addToCart(p,1);grid.appendChild(card);
-  });
+  const grid=$('#productGrid');if(!grid)return;grid.replaceChildren();
+  if(!items.length){const message=document.createElement('p');message.className='muted';message.textContent='Không có sản phẩm phù hợp.';grid.append(message);return;}
+  items.forEach(p=>grid.append(productCard(p)));
 }
