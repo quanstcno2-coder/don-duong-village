@@ -13,7 +13,12 @@ for(const file of fs.readdirSync(root).filter(f=>f.endsWith('.html')).concat('ad
  for(const match of text.matchAll(/(?:src|href)="([^"#?]+)"/g))if(!/^(https?:|data:|mailto:|tel:)/.test(match[1]))assert.ok(fs.existsSync(path.resolve(path.dirname(full),match[1])),file+': missing '+match[1]);
  assert.ok(text.includes('rel="icon"'),file+': favicon');
  const icon=text.match(/<link rel="icon"[^>]*href="([^"]+)"/);
- assert.equal(icon?.[1],file.startsWith('admin/')?'../assets/images/logo-mark.png':'assets/images/logo-mark.png',file+': official favicon');
+ assert.equal(icon?.[1],file.startsWith('admin/')?'../assets/images/favicon.svg':'assets/images/favicon.svg',file+': official favicon');
 }
 assert.equal(require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(root,'assets/images/logo-mark.png'))).digest('hex'),'7cf8eb8d5a61bd774af0a8ff62b7a1693de893025643f9bbb5f65f66295b896c','Official logo must remain byte-identical to supplied file');
 console.log('PASS: syntax, prices, CSV injection/escaping, local references, favicons');
+
+const favicon=fs.readFileSync(path.join(root,'assets/images/favicon.svg'),'utf8');
+assert.ok(favicon.includes('viewBox="120 0 455 455"'));
+assert.ok(favicon.includes('preserveAspectRatio="xMidYMid meet"'));
+assert.deepEqual(Buffer.from(favicon.match(/base64,([^"]+)/)[1],'base64'),fs.readFileSync(path.join(root,'assets/images/logo-mark.png')));

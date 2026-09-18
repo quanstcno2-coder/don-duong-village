@@ -56,3 +56,5 @@ Kết quả: các kiểm tra trên qua. Screenshots `tests/categories-320.png`, 
 - Category CRUD/API lỗi được báo hoặc fallback an toàn. Bảng/grid đọc phân trang không phải transactional snapshot nếu dữ liệu bị chỉnh đồng thời.
 - Full JSON mới chứa cả `product_categories`, giữ format version 1. Nếu bảng category chưa có hoặc không đọc được, export báo lỗi và không tạo bản full backup thiếu bảng; các CSV bảng cũ vẫn hoạt động. JSON vẫn không gồm file ảnh R2 hoặc Auth users. Worker không đổi.
 - Asset logo đã được dùng nguyên file theo yêu cầu; không làm icon phiên bản crop/sửa khác.
+
+Favicon theo yêu cầu mới: assets/images/favicon.svg nhúng nguyên byte logo-mark.png, dùng viewBox vuông 120 0 455 455 để giảm nền trống ngang; preserveAspectRatio giữ tỉ lệ, không chỉnh màu hoặc vẽ lại. Kiểm tra thủ công: mở public/Admin, refresh favicon hoặc mở tab mới để tránh cache và xác nhận logo lớn hơn, đủ slogan.
