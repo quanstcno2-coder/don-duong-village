@@ -8,13 +8,15 @@ function productCard(p){
   else{const placeholder=document.createElement('div');placeholder.className='product-placeholder';placeholder.textContent='Chưa có ảnh';media.append(placeholder);}
   link.append(media);card.append(link);
   const info=document.createElement('div');info.className='product-info';
-  const name=document.createElement('h3');name.textContent=p.name||'';
+  const name=document.createElement('h3');const nameLink=document.createElement('a');nameLink.href=href;nameLink.textContent=p.name||'';name.append(nameLink);
   const price=document.createElement('div');price.className='price';price.innerHTML=priceMarkup(p);
   const actions=document.createElement('div');actions.className='actions';
   const detail=document.createElement('a');detail.href=href;detail.className='btn secondary small card-detail';detail.textContent='Xem chi tiết';
   const add=document.createElement('button');add.type='button';add.className='btn primary small card-add';add.textContent='+ Giỏ hàng';add.onclick=()=>addToCart(p,1);
   const buy=document.createElement('button');buy.type='button';buy.className='btn gold small card-buy-now';buy.textContent='Mua ngay';buy.onclick=()=>{addToCart(p,1);location.href='cart.html#checkoutForm';};
-  actions.append(detail,add,buy);info.append(name,price,actions);card.append(info);return card;
+  actions.append(detail,add,buy);info.append(name,price,actions);card.append(info);
+  card.addEventListener('click',event=>{if(event.target.closest('a,button'))return;location.href=href;});
+  return card;
 }
 function isPublicProduct(p){return p.visibility==='visible'&&!p.deleted_at;}
 async function renderRelatedProducts(current){
